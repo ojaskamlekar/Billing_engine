@@ -199,6 +199,8 @@ const TABS = [
   { id: 'audit',         label: 'Audit Logs',       icon: <ShieldAlert className="h-4 w-4" /> },
   { id: 'health',        label: 'System Health',    icon: <Server className="h-4 w-4" /> },
   { id: 'optimization',  label: 'Optimization',     icon: <Zap className="h-4 w-4" /> },
+  { id: 'integrity',     label: 'File Integrity',   icon: <Shield className="h-4 w-4" /> },
+  { id: 'api-metering',  label: 'API Metering',     icon: <Activity className="h-4 w-4" /> },
 ];
 
 function SubscriptionDonut({ cards }) {
@@ -945,6 +947,8 @@ export default function AdminDashboard({ userName, onLogout }) {
   const [now, setNow] = useState(new Date());
   const [securityStats, setSecurityStats] = useState(null);
   const [adminOptimization, setAdminOptimization] = useState(null);
+  const [adminIntegrity, setAdminIntegrity] = useState(null);
+  const [adminMetering, setAdminMetering] = useState(null);
 
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
 
@@ -1009,6 +1013,63 @@ export default function AdminDashboard({ userName, onLogout }) {
     finally { setTabLoading('optimization', false); }
   }, []);
 
+  const fetchIntegrity = useCallback(async () => {
+    setTabLoading('integrity', true);
+    try { const r = await api.get('/admin/integrity-stats'); setAdminIntegrity(r.data); }
+    catch { showToast('Failed to load integrity stats', 'error'); }
+    finally { setTabLoading('integrity', false); }
+  }, []);
+
+  const [meteringSearchUser, setMeteringSearchUser] = useState('');
+  const [meteringSearchEndpoint, setMeteringSearchEndpoint] = useState('');
+  const [meteringLogs, setMeteringLogs] = useState({ logs: [], total: 0 });
+  const [meteringLogsLoading, setMeteringLogsLoading] = useState(false);
+  const [meteringPage, setMeteringPage] = useState(1);
+
+  const fetchMeteringSummary = useCallback(async () => {
+    setTabLoading('metering', true);
+    try {
+      const r = await api.get('/admin/api-metering/summary');
+      setAdminMetering(r.data);
+    } catch {
+      showToast('Failed to load API metering summary', 'error');
+    } finally {
+      setTabLoading('metering', false);
+    }
+  }, []);
+
+  const fetchMeteringLogs = useCallback(async () => {
+    setMeteringLogsLoading(true);
+    try {
+      const params = {
+        limit: 10,
+        offset: (meteringPage - 1) * 10,
+      };
+      if (meteringSearchUser) params.user_id = meteringSearchUser;
+      if (meteringSearchEndpoint) params.endpoint = meteringSearchEndpoint;
+      
+      const r = await api.get('/admin/api-metering/logs', { params });
+      setMeteringLogs(r.data);
+    } catch {
+      showToast('Failed to load API metering logs', 'error');
+    } finally {
+      setMeteringLogsLoading(false);
+    }
+  }, [meteringPage, meteringSearchUser, meteringSearchEndpoint]);
+
+  useEffect(() => {
+    if (activeTab === 'api-metering') {
+      fetchMeteringSummary();
+      fetchMeteringLogs();
+    }
+  }, [activeTab, fetchMeteringSummary, fetchMeteringLogs]);
+
+  useEffect(() => {
+    if (activeTab === 'api-metering') {
+      fetchMeteringLogs();
+    }
+  }, [meteringPage, meteringSearchUser, meteringSearchEndpoint]);
+
   useEffect(() => {
     if (activeTab === 'overview') { fetchCards(); fetchUsers(); fetchRecentLogs(); fetchSecurity(); }
     if (activeTab === 'users') fetchUsers();
@@ -1016,6 +1077,7 @@ export default function AdminDashboard({ userName, onLogout }) {
     if (activeTab === 'audit') fetchLogs();
     if (activeTab === 'health') fetchHealth();
     if (activeTab === 'optimization') fetchOptimization();
+    if (activeTab === 'integrity') fetchIntegrity();
   }, [activeTab]);
 
   useEffect(() => { if (activeTab === 'audit') fetchLogs(); }, [auditPage, auditSearch, auditAction, auditStartDate, auditEndDate, auditSortBy]);
@@ -1391,6 +1453,47 @@ export default function AdminDashboard({ userName, onLogout }) {
               </button>
             </div>
             <AdminOptimizationView data={adminOptimization} loading={loading.optimization} />
+          </div>
+        )}
+
+        {activeTab === 'integrity' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between text-left">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Platform File Integrity</h2>
+                <p className="text-sm text-slate-500 mt-0.5">Global audit of verification statistics, duplicate files, and potential corruption anomalies.</p>
+              </div>
+              <button onClick={fetchIntegrity} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 border border-slate-200 bg-white rounded-lg hover:bg-slate-50 cursor-pointer transition">
+                <RefreshCw className={`h-4 w-4 ${loading.integrity ? 'animate-spin' : ''}`} />Refresh Stats
+              </button>
+            </div>
+            <AdminIntegrityView data={adminIntegrity} loading={loading.integrity} />
+          </div>
+        )}
+
+        {activeTab === 'api-metering' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-left">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">API Operations Metering</h2>
+                <p className="text-sm text-slate-500 mt-0.5">Audit transaction logs, monitor active response times, and export user operation logs.</p>
+              </div>
+              <button onClick={() => { fetchMeteringSummary(); fetchMeteringLogs(); }} className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 border border-slate-200 bg-white rounded-lg hover:bg-slate-50 cursor-pointer transition text-slate-700">
+                <RefreshCw className={`h-4 w-4 ${loading.metering ? 'animate-spin' : ''}`} />Refresh Stats
+              </button>
+            </div>
+            <AdminAPIMeteringView 
+              data={adminMetering} 
+              loading={loading.metering}
+              logs={meteringLogs}
+              logsLoading={meteringLogsLoading}
+              page={meteringPage}
+              setPage={setMeteringPage}
+              searchUser={meteringSearchUser}
+              setSearchUser={setMeteringSearchUser}
+              searchEndpoint={meteringSearchEndpoint}
+              setSearchEndpoint={setMeteringSearchEndpoint}
+            />
           </div>
         )}
       </main>
@@ -1824,6 +1927,337 @@ function TempPasswordModal({ result, onClose }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AdminIntegrityView({ data, loading }) {
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-500">
+        <RefreshCw className="h-6 w-6 animate-spin text-indigo-500 mr-2" />
+        <span>Loading integrity stats...</span>
+      </div>
+    );
+  }
+
+  if (!data) return <div className="text-center text-slate-400 py-10">No data loaded.</div>;
+
+  const fmt = (bytes) => {
+    if (!bytes || bytes === 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const value = bytes / 1024 ** i;
+    return `${value.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+  };
+
+  const fmtDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-IN", {
+      year: "numeric", month: "short", day: "numeric"
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
+        {/* KPI 1 */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Verified Files</span>
+          <span className="mt-2 block text-2xl font-bold text-slate-900">{data.verified_files}</span>
+          <span className="mt-1 block text-xs text-emerald-600 font-medium">✅ Safe & validated</span>
+        </div>
+
+        {/* KPI 2 */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Duplicate Files</span>
+          <span className="mt-2 block text-2xl font-bold text-slate-900">{data.duplicate_files}</span>
+          <span className="mt-1 block text-xs text-amber-600 font-medium">💾 Redundant storage</span>
+        </div>
+
+        {/* KPI 3 */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Corrupted Files</span>
+          <span className={`mt-2 block text-2xl font-bold ${data.corrupted_files > 0 ? "text-rose-600" : "text-slate-900"}`}>
+            {data.corrupted_files}
+          </span>
+          <span className={`mt-1 block text-xs font-medium ${data.corrupted_files > 0 ? "text-rose-600" : "text-slate-500"}`}>
+            {data.corrupted_files > 0 ? "⚠️ Anomaly detected" : "✓ No anomalies"}
+          </span>
+        </div>
+
+        {/* KPI 4 */}
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Hashes Generated</span>
+          <span className="mt-2 block text-2xl font-bold text-slate-900">{data.total_hashes_generated}</span>
+          <span className="mt-1 block text-xs text-indigo-600 font-medium">⚡ Persistent hash cache</span>
+        </div>
+      </div>
+
+      {/* Corrupted Files Audit Table */}
+      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden text-left shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <h3 className="text-sm font-semibold text-slate-800">Anomaly Audit Log</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Files that failed the SHA-256 integrity verification checks.</p>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 uppercase tracking-wider font-bold">
+                <th className="px-5 py-3">File ID</th>
+                <th className="px-5 py-3">File Name</th>
+                <th className="px-5 py-3">File Size</th>
+                <th className="px-5 py-3">Plan</th>
+                <th className="px-5 py-3">Upload Date</th>
+                <th className="px-5 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {(!data.corrupted_list || data.corrupted_list.length === 0) ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-slate-400 font-medium">
+                    No integrity check failures found. Everything is secure! 🎉
+                  </td>
+                </tr>
+              ) : (
+                data.corrupted_list.map((f) => (
+                  <tr key={f.id} className="hover:bg-slate-50 transition">
+                    <td className="px-5 py-3 font-mono text-[10px] text-slate-400">{f.id}</td>
+                    <td className="px-5 py-3 font-medium text-slate-900 truncate max-w-[200px]" title={f.filename}>{f.filename}</td>
+                    <td className="px-5 py-3 font-mono">{fmt(f.filesize)}</td>
+                    <td className="px-5 py-3">{f.plan}</td>
+                    <td className="px-5 py-3">{fmtDate(f.uploaded_at)}</td>
+                    <td className="px-5 py-3">
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-2 py-0.5 font-bold text-rose-700 border border-rose-100">
+                        ❌ Failed
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function AdminAPIMeteringView({
+  data,
+  loading,
+  logs,
+  logsLoading,
+  page,
+  setPage,
+  searchUser,
+  setSearchUser,
+  searchEndpoint,
+  setSearchEndpoint
+}) {
+  const [userFilter, setUserFilter] = useState('');
+  const [endpointFilter, setEndpointFilter] = useState('');
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    setSearchUser(userFilter);
+    setSearchEndpoint(endpointFilter);
+    setPage(1);
+  };
+
+  const handleExport = () => {
+    let url = `/admin/api-metering/export`;
+    const params = [];
+    if (userFilter) params.push(`user_id=${encodeURIComponent(userFilter)}`);
+    if (endpointFilter) params.push(`endpoint=${encodeURIComponent(endpointFilter)}`);
+    if (params.length > 0) {
+      url += `?${params.join('&')}`;
+    }
+    window.open(`${api.defaults.baseURL || 'http://localhost:8000'}${url}`, '_blank');
+  };
+
+  if (loading && !data) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-500">
+        <RefreshCw className="h-6 w-6 animate-spin text-indigo-500 mr-2" />
+        <span>Loading summary metering analytics...</span>
+      </div>
+    );
+  }
+
+  const usersUsage = data?.user_usage || [];
+
+  return (
+    <div className="space-y-6 text-left">
+      
+      {/* Search and Filters */}
+      <form onSubmit={handleSearchSubmit} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-end gap-4">
+        <div className="flex-1 min-w-[200px]">
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Filter User ID</label>
+          <input
+            type="number"
+            placeholder="e.g. 1"
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+            className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-indigo-500 text-slate-800"
+          />
+        </div>
+        <div className="flex-1 min-w-[250px]">
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Filter Endpoint Path</label>
+          <input
+            type="text"
+            placeholder="e.g. /upload"
+            value={endpointFilter}
+            onChange={(e) => setEndpointFilter(e.target.value)}
+            className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-indigo-500 text-slate-800"
+          />
+        </div>
+        <div className="flex gap-2.5">
+          <button type="submit" className="px-4 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-md cursor-pointer transition">
+            Filter Logs
+          </button>
+          <button type="button" onClick={handleExport} className="px-4 py-2 text-xs font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl cursor-pointer transition flex items-center gap-1.5">
+            <Upload className="h-3.5 w-3.5 rotate-180" /> Export CSV
+          </button>
+        </div>
+      </form>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* User usage leaderboard */}
+        <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">User Usage Leaderboard</h3>
+            <p className="text-[10px] text-slate-500 mt-0.5">Top consumers sorted by highest call frequency.</p>
+          </div>
+          <div className="max-h-[450px] overflow-y-auto divide-y divide-slate-100">
+            {usersUsage.length === 0 ? (
+              <div className="text-center py-8 text-slate-400 text-xs">No user activities logged.</div>
+            ) : (
+              usersUsage.map((u) => (
+                <div key={u.user_id} className="p-4 hover:bg-slate-50/50 transition">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="block text-xs font-bold text-slate-850 truncate max-w-[150px]">{u.name}</span>
+                      <span className="block text-[10px] text-slate-400 truncate max-w-[150px]">{u.email}</span>
+                      <span className="block text-[9px] font-mono text-slate-450 mt-0.5">ID: {u.user_id}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-xs font-black text-slate-900">{u.total_requests} reqs</span>
+                      <span className="block text-[9px] text-emerald-600 font-semibold">{u.success_rate.toFixed(1)}% success</span>
+                      <span className="block text-[9px] text-slate-400 font-mono mt-0.5">{u.avg_latency.toFixed(1)}ms avg</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Detailed paginated request logs table */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-55/10 flex justify-between items-center">
+              <div>
+                <h3 className="text-xs font-bold text-slate-450 uppercase tracking-wider">Transaction History Logs</h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">Paginated live requests stream.</p>
+              </div>
+              {logsLoading && <RefreshCw className="h-4 w-4 animate-spin text-slate-400" />}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/30 text-slate-550 font-bold uppercase tracking-wider">
+                    <th className="px-4 py-2.5">User</th>
+                    <th className="px-4 py-2.5">Method &amp; Path</th>
+                    <th className="px-4 py-2.5">Type</th>
+                    <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5 text-right">Latency</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium font-mono text-[11px]">
+                  {logs.logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-12 text-slate-400 font-semibold">
+                        No request logs matched the filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    logs.logs.map((l) => {
+                      const isErr = l.status_code >= 400;
+                      return (
+                        <tr key={l.id} className="hover:bg-slate-50/70 transition">
+                          <td className="px-4 py-2">
+                            <span className="block font-bold text-slate-900 truncate max-w-[100px]" title={l.user_email}>
+                              {l.user_email}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black mr-1 ${
+                              l.method === 'POST' ? 'bg-blue-50 text-blue-700' :
+                              l.method === 'DELETE' ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-700'
+                            }`}>
+                              {l.method}
+                            </span>
+                            <span className="text-slate-800 text-[10px]" title={l.endpoint}>{l.endpoint}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className="text-[10px] text-slate-550">{l.request_type}</span>
+                          </td>
+                          <td className="px-4 py-2">
+                            <span className={`inline-flex rounded px-1.5 py-0.5 font-bold ${
+                              isErr 
+                                ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            }`}>
+                              {l.status_code}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-right text-slate-800 font-bold">
+                            {l.execution_time_ms.toFixed(1)}ms
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pagination controls */}
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
+            <span className="text-slate-500 font-semibold">
+              Showing page {page} of {Math.max(1, Math.ceil(logs.total / 10))} ({logs.total} total logs)
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={page <= 1}
+                type="button"
+                onClick={() => setPage(page - 1)}
+                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-750 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-bold flex items-center gap-0.5"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Previous
+              </button>
+              <button
+                disabled={page >= Math.ceil(logs.total / 10)}
+                type="button"
+                onClick={() => setPage(page + 1)}
+                className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-755 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-bold flex items-center gap-0.5"
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
   );
 }

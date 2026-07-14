@@ -25,6 +25,139 @@ from rate_limiter import RateLimitException, check_rate_limit
 
 app = FastAPI()
 
+import time
+import asyncio
+import queue
+import threading
+
+log_queue = queue.Queue()
+
+def log_worker():
+    from database import SessionLocal
+    from models import APIRequestLog, User
+    from redis_client import _get_client
+    
+    while True:
+        try:
+            log_data = log_queue.get()
+            if log_data is None:
+                break
+                
+            method, path, status_code, execution_time_ms, ip_address, auth_header, request_id = log_data
+            
+            # Categorize Request Type
+            request_type = "OTHER"
+            if path == "/upload" and method == "POST":
+                request_type = "UPLOAD"
+            elif (path.startswith("/files/") and path.endswith("/download")) or (path == "/download"):
+                request_type = "DOWNLOAD"
+            elif path.startswith("/files/") and method == "DELETE":
+                request_type = "DELETE"
+            elif path == "/files" and method == "GET":
+                request_type = "LIST FILES"
+            elif path == "/login" and method == "POST":
+                request_type = "LOGIN"
+            elif path == "/register" and method == "POST":
+                request_type = "REGISTER"
+            elif path == "/verify-email" and method == "POST":
+                request_type = "EMAIL VERIFICATION"
+            elif path == "/resend-otp" and method == "POST":
+                request_type = "OTP RESEND"
+            elif path.startswith("/admin/"):
+                request_type = "ADMIN ACTIONS"
+                
+            user_id = None
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+                try:
+                    from auth import decode_access_token
+                    payload = decode_access_token(token)
+                    email = payload.get("sub")
+                    if email:
+                        r_client = _get_client()
+                        if r_client:
+                            try:
+                                cached_id = r_client.get(f"wecloud:user_id:{email}")
+                                if cached_id:
+                                    user_id = int(cached_id)
+                            except Exception:
+                                pass
+                        
+                        if user_id is None:
+                            db = SessionLocal()
+                            try:
+                                user = db.query(User).filter(User.email == email).first()
+                                if user:
+                                    user_id = user.id
+                                    if r_client:
+                                        try:
+                                            r_client.set(f"wecloud:user_id:{email}", user_id, ex=3600)
+                                        except Exception:
+                                            pass
+                            finally:
+                                db.close()
+                except Exception:
+                    pass
+            
+            db = SessionLocal()
+            try:
+                log_entry = APIRequestLog(
+                    user_id=user_id,
+                    endpoint=path,
+                    method=method,
+                    request_type=request_type,
+                    status_code=status_code,
+                    execution_time_ms=execution_time_ms,
+                    ip_address=ip_address,
+                    request_id=request_id
+                )
+                db.add(log_entry)
+                db.commit()
+            except Exception as e:
+                print(f"Error logging request in worker: {e}")
+            finally:
+                db.close()
+                
+        except Exception as e:
+            print(f"Error in log worker loop: {e}")
+        finally:
+            log_queue.task_done()
+
+# Start background worker thread
+worker_thread = threading.Thread(target=log_worker, daemon=True)
+worker_thread.start()
+
+
+@app.middleware("http")
+async def log_api_requests(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/static") or path.startswith("/docs") or path.startswith("/openapi.json") or path == "/favicon.ico":
+        return await call_next(request)
+        
+    import uuid
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    
+    start_time = time.time()
+    response = await call_next(request)
+    execution_time_ms = (time.time() - start_time) * 1000.0
+    
+    ip_address = request.client.host if request.client else "unknown"
+    auth_header = request.headers.get("Authorization")
+    
+    log_queue.put((
+        request.method,
+        path,
+        response.status_code,
+        execution_time_ms,
+        ip_address,
+        auth_header,
+        request_id
+    ))
+    
+    return response
+
+
 @app.exception_handler(RateLimitException)
 def rate_limit_exception_handler(request: Request, exc: RateLimitException):
     return JSONResponse(
@@ -105,8 +238,27 @@ def log_audit_event(
 
 @app.on_event("startup")
 def on_startup():
-    """Create ORM-managed tables (e.g. users) on application start."""
+    """Create ORM-managed tables (e.g. users) on application start and backfill fields."""
     init_db()
+    try:
+        import mimetypes
+        with engine.connect() as conn:
+            # Backfill mime_type
+            rows = conn.execute(text("SELECT id, filename FROM usage_logs WHERE mime_type IS NULL")).fetchall()
+            for r in rows:
+                row_id = r[0]
+                fn = r[1] or ""
+                mtype, _ = mimetypes.guess_type(fn)
+                mtype = mtype or "application/octet-stream"
+                conn.execute(
+                    text("UPDATE usage_logs SET mime_type = :mtype WHERE id = :id"),
+                    {"mtype": mtype, "id": row_id}
+                )
+            # Backfill integrity_status
+            conn.execute(text("UPDATE usage_logs SET integrity_status = 'VERIFIED' WHERE integrity_status IS NULL"))
+            conn.commit()
+    except Exception as e:
+        print(f"Error backfilling metadata columns: {e}")
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(payload: UserCreate, request: Request, db: Session = Depends(get_db)):
@@ -449,6 +601,9 @@ UPLOAD_FOLDER = "uploads"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+from storage_provider import get_storage_provider
+storage_provider = get_storage_provider()
+
 def sanitize_filename(filename: str) -> str:
     import re
     # Extract only the base name (prevents path traversal)
@@ -483,60 +638,76 @@ async def upload_file(
     )
 
     import uuid
+    import tempfile
+    
     safe_original = sanitize_filename(file.filename)
     unique_id = str(uuid.uuid4())
     storage_fn = f"{current_user.id}_{unique_id}_{safe_original}"
-    file_path = os.path.join(UPLOAD_FOLDER, storage_fn)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    sha256 = hashlib.sha256()
+    temp_fd, temp_path = tempfile.mkstemp()
+    try:
+        with os.fdopen(temp_fd, "wb") as buffer:
+            while True:
+                chunk = file.file.read(8192)
+                if not chunk:
+                    break
+                buffer.write(chunk)
+                sha256.update(chunk)
+        file_hash = sha256.hexdigest()
+        file_size = os.path.getsize(temp_path)
 
-    file_size = os.path.getsize(file_path)
+        # 1. Validate max upload size for current plan
+        max_upload_sizes = {
+            "Free": 25 * 1024 * 1024,
+            "Pro": 500 * 1024 * 1024,
+            "Enterprise": 5 * 1024 * 1024 * 1024
+        }
+        max_allowed = max_upload_sizes.get(user_plan, 25 * 1024 * 1024)
+        if file_size > max_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Upload size exceeds the limit for your plan. Maximum upload size for {user_plan} is {max_allowed // (1024 * 1024)} MB."
+            )
 
-    # 1. Validate max upload size for current plan
-    max_upload_sizes = {
-        "Free": 25 * 1024 * 1024,
-        "Pro": 500 * 1024 * 1024,
-        "Enterprise": 5 * 1024 * 1024 * 1024
-    }
-    max_allowed = max_upload_sizes.get(user_plan, 25 * 1024 * 1024)
-    if file_size > max_allowed:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Upload size exceeds the limit for your plan. Maximum upload size for {user_plan} is {max_allowed // (1024 * 1024)} MB."
-        )
+        # 2. Validate current total storage limit
+        with engine.connect() as conn:
+            result = conn.execute(
+                text("SELECT SUM(filesize) FROM usage_logs WHERE user_id = :user_id"),
+                {"user_id": current_user.id}
+            )
+            total_size = int(result.scalar() or 0)
 
-    # 2. Validate current total storage limit
-    with engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT SUM(filesize) FROM usage_logs WHERE user_id = :user_id"),
-            {"user_id": current_user.id}
-        )
-        total_size = int(result.scalar() or 0)
+        projected_total = total_size + file_size
 
-    projected_total = total_size + file_size
+        storage_limits = {
+            "Free": 5 * 1024 * 1024 * 1024,
+            "Pro": 100 * 1024 * 1024 * 1024,
+            "Enterprise": 5 * 1024 * 1024 * 1024 * 1024
+        }
+        limit_allowed = storage_limits.get(user_plan, 5 * 1024 * 1024 * 1024)
+        if projected_total > limit_allowed:
+            if user_plan == "Free":
+                message = "Storage limit exceeded. Upgrade to Pro."
+            elif user_plan == "Pro":
+                message = "Storage limit exceeded. Upgrade to Enterprise."
+            else:
+                message = "Storage limit exceeded."
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=message
+            )
 
-    storage_limits = {
-        "Free": 5 * 1024 * 1024 * 1024,
-        "Pro": 100 * 1024 * 1024 * 1024,
-        "Enterprise": 5 * 1024 * 1024 * 1024 * 1024
-    }
-    limit_allowed = storage_limits.get(user_plan, 5 * 1024 * 1024 * 1024)
-    if projected_total > limit_allowed:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        if user_plan == "Free":
-            message = "Storage limit exceeded. Upgrade to Pro."
-        elif user_plan == "Pro":
-            message = "Storage limit exceeded. Upgrade to Enterprise."
-        else:
-            message = "Storage limit exceeded."
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=message
-        )
+        # Upload to active storage provider
+        with open(temp_path, "rb") as f:
+            storage_provider.upload_file(f, storage_fn)
+
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
     # 3. Calculate cost using correct rate per plan
     rates = {
@@ -547,18 +718,22 @@ async def upload_file(
     rate = rates.get(user_plan, 2.0)
     cost = (file_size / (1024 * 1024)) * rate
 
-    # Compute SHA-256 hash for duplicate detection (read from disk after write)
-    sha256 = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256.update(chunk)
-    file_hash = sha256.hexdigest()
+    # Determine MIME type
+    import mimetypes
+    mime_type, _ = mimetypes.guess_type(safe_original)
+    mime_type = mime_type or "application/octet-stream"
+
+    # Increment Redis hashes generated count
+    try:
+        redis_client._get_client().incr("wecloud:integrity:hashes_generated")
+    except Exception:
+        pass
 
     with engine.connect() as conn:
         conn.execute(
             text(
-                "INSERT INTO usage_logs (filename, original_filename, storage_filename, filesize, plan, user_id, sha256_hash, download_count) "
-                "VALUES (:filename, :original_filename, :storage_filename, :filesize, :plan, :user_id, :sha256_hash, 0)"
+                "INSERT INTO usage_logs (filename, original_filename, storage_filename, filesize, plan, user_id, sha256_hash, download_count, mime_type, integrity_status) "
+                "VALUES (:filename, :original_filename, :storage_filename, :filesize, :plan, :user_id, :sha256_hash, 0, :mime_type, 'VERIFIED')"
             ),
             {
                 "filename": safe_original,
@@ -568,9 +743,33 @@ async def upload_file(
                 "plan": user_plan,
                 "user_id": current_user.id,
                 "sha256_hash": file_hash,
+                "mime_type": mime_type,
             }
         )
         conn.commit()
+
+        # Retrieve file ID and log upload bandwidth
+        res_id = conn.execute(
+            text("SELECT id FROM usage_logs WHERE storage_filename = :storage_fn"),
+            {"storage_fn": storage_fn}
+        )
+        file_id = res_id.scalar()
+
+    try:
+        request_id = getattr(request.state, "request_id", None)
+        ip_address = request.client.host if request.client else "unknown"
+        from bandwidth_service import BandwidthService
+        BandwidthService.log_bandwidth_async(
+            user_id=current_user.id,
+            file_id=file_id,
+            operation="UPLOAD",
+            bytes_transferred=file_size,
+            ip_address=ip_address,
+            request_id=request_id
+        )
+    except Exception as e:
+        print(f"Failed to log upload bandwidth: {e}")
+
     invalidate_user_cache(current_user.id)
 
     # Log File Upload audit action
@@ -595,7 +794,7 @@ def get_usage(current_user: User = Depends(get_current_user)):
     with engine.connect() as conn:
 
         result = conn.execute(
-            text("SELECT id, filename, filesize, plan, uploaded_at, original_filename FROM usage_logs WHERE user_id = :user_id"),
+            text("SELECT id, filename, filesize, plan, uploaded_at, original_filename, storage_filename, sha256_hash, mime_type, integrity_status FROM usage_logs WHERE user_id = :user_id"),
             {"user_id": current_user.id}
         )
 
@@ -609,7 +808,11 @@ def get_usage(current_user: User = Depends(get_current_user)):
             "filename": row.original_filename or row.filename,
             "filesize": row.filesize,
             "plan": row.plan,
-            "uploaded_at": str(row.uploaded_at)
+            "uploaded_at": str(row.uploaded_at),
+            "storage_filename": row.storage_filename or row.filename,
+            "sha256_hash": row.sha256_hash or "",
+            "mime_type": row.mime_type or "application/octet-stream",
+            "integrity_status": row.integrity_status or "VERIFIED"
         })
 
     return data
@@ -637,51 +840,331 @@ def get_summary(current_user: User = Depends(get_current_user)):
     }
     
     
-@app.get("/forecast")
-@redis_client.cache_response(ttl=300)
-def forecast(current_user: User = Depends(get_current_user)):
-    if current_user.plan == "Free":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Upgrade to Pro to access forecasting."
-        )
+@app.get("/api-metering/summary")
+def get_api_metering_summary(
+    timeframe: str = "Last 30 Days",
+    start_date: str = None,
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from models import APIRequestLog
+    from datetime import datetime, timedelta
 
-    with engine.connect() as conn:
-        result = conn.execute(
-            text("""
-            SELECT filesize
-            FROM usage_logs
-            WHERE user_id = :user_id
-            ORDER BY uploaded_at
-            """),
-            {"user_id": current_user.id}
-        )
-        rows = result.fetchall()
+    now = datetime.utcnow()
+    query = db.query(APIRequestLog).filter(APIRequestLog.user_id == current_user.id)
 
-    storage_history = []
-    running_total = 0
-    for row in rows:
-        mb = row[0] / (1024 * 1024)
-        running_total += mb
-        storage_history.append(running_total)
+    if timeframe == "Today":
+        start = datetime(now.year, now.month, now.day)
+        query = query.filter(APIRequestLog.timestamp >= start)
+    elif timeframe == "Last 7 Days":
+        start = now - timedelta(days=7)
+        query = query.filter(APIRequestLog.timestamp >= start)
+    elif timeframe == "Last 30 Days":
+        start = now - timedelta(days=30)
+        query = query.filter(APIRequestLog.timestamp >= start)
+    elif timeframe == "Custom" and start_date and end_date:
+        try:
+            start = datetime.fromisoformat(start_date)
+            end = datetime.fromisoformat(end_date)
+            query = query.filter(APIRequestLog.timestamp.between(start, end))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format.")
 
-    if len(storage_history) < 2:
-        predicted_storage = storage_history[0] if storage_history else 0.0
-    else:
-        predicted_storage = predict_storage(storage_history)
-        
-    rates = {
-        "Free": 0.0,
-        "Pro": 2.0,
-        "Enterprise": 1.5
+    logs = query.all()
+
+    total_requests = len(logs)
+    failed_requests = sum(1 for l in logs if l.status_code >= 400)
+    success_rate = round(((total_requests - failed_requests) / total_requests * 100), 2) if total_requests > 0 else 100.0
+    avg_response_time = round(sum(l.execution_time_ms for l in logs) / total_requests, 2) if total_requests > 0 else 0.0
+
+    breakdown = {
+        "UPLOAD": 0,
+        "DOWNLOAD": 0,
+        "DELETE": 0,
+        "LIST FILES": 0,
+        "LOGIN": 0,
+        "REGISTER": 0,
+        "EMAIL VERIFICATION": 0,
+        "OTP RESEND": 0,
+        "ADMIN ACTIONS": 0,
+        "OTHER": 0
     }
-    rate = rates.get(current_user.plan, 2.0)
-    predicted_cost = predicted_storage * rate
+    for l in logs:
+        breakdown[l.request_type] = breakdown.get(l.request_type, 0) + 1
+
+    cost_per_request = 0.02
+    estimated_billable = total_requests
+    estimated_cost = round(estimated_billable * cost_per_request, 4)
 
     return {
-        "predicted_storage_mb": round(predicted_storage, 2),
-        "predicted_cost": round(predicted_cost, 2)
+        "summary": {
+            "total_requests": total_requests,
+            "failed_requests": failed_requests,
+            "success_rate": success_rate,
+            "avg_response_time": avg_response_time,
+            "estimated_billable_requests": estimated_billable,
+            "estimated_request_cost": estimated_cost,
+            "cost_per_request": cost_per_request
+        },
+        "breakdown": breakdown
     }
+
+
+@app.get("/api-metering/charts")
+def get_api_metering_charts(
+    timeframe: str = "Last 30 Days",
+    start_date: str = None,
+    end_date: str = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from models import APIRequestLog
+    from datetime import datetime, timedelta
+
+    now = datetime.utcnow()
+    query = db.query(APIRequestLog).filter(APIRequestLog.user_id == current_user.id)
+
+    if timeframe == "Today":
+        start = datetime(now.year, now.month, now.day)
+        query = query.filter(APIRequestLog.timestamp >= start)
+    elif timeframe == "Last 7 Days":
+        start = now - timedelta(days=7)
+        query = query.filter(APIRequestLog.timestamp >= start)
+    elif timeframe == "Last 30 Days":
+        start = now - timedelta(days=30)
+        query = query.filter(APIRequestLog.timestamp >= start)
+    elif timeframe == "Custom" and start_date and end_date:
+        try:
+            start = datetime.fromisoformat(start_date)
+            end = datetime.fromisoformat(end_date)
+            query = query.filter(APIRequestLog.timestamp.between(start, end))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format.")
+
+    logs = query.all()
+
+    daily_volume = {}
+    for l in logs:
+        date_str = l.timestamp.strftime("%Y-%m-%d")
+        if date_str not in daily_volume:
+            daily_volume[date_str] = {"date": date_str, "requests": 0, "success": 0, "failed": 0}
+        daily_volume[date_str]["requests"] += 1
+        if l.status_code < 400:
+            daily_volume[date_str]["success"] += 1
+        else:
+            daily_volume[date_str]["failed"] += 1
+
+    sorted_daily = sorted(daily_volume.values(), key=lambda x: x["date"])
+
+    type_counts = {}
+    for l in logs:
+        type_counts[l.request_type] = type_counts.get(l.request_type, 0) + 1
+    pie_data = [{"name": k, "value": v} for k, v in type_counts.items()]
+
+    success_count = sum(1 for l in logs if l.status_code < 400)
+    failed_count = len(logs) - success_count
+    success_vs_failed = [
+        {"name": "Success", "value": success_count},
+        {"name": "Failed", "value": failed_count}
+    ]
+
+    endpoint_counts = {}
+    for l in logs:
+        key = f"{l.method} {l.endpoint}"
+        endpoint_counts[key] = endpoint_counts.get(key, 0) + 1
+    top_endpoints = sorted(
+        [{"endpoint": k, "count": v} for k, v in endpoint_counts.items()],
+        key=lambda x: x["count"],
+        reverse=True
+    )[:5]
+
+    hourly_counts = {h: 0 for h in range(24)}
+    for l in logs:
+        hour = l.timestamp.hour
+        hourly_counts[hour] += 1
+    hourly_data = [{"hour": f"{h:02d}:00", "requests": count} for h, count in hourly_counts.items()]
+
+    return {
+        "daily_volume": sorted_daily,
+        "type_distribution": pie_data,
+        "success_vs_failed": success_vs_failed,
+        "top_endpoints": top_endpoints,
+        "peak_hours": hourly_data
+    }
+
+
+def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    if getattr(current_user, "role", "customer").lower() != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden. Admin access required."
+        )
+    return current_user
+
+
+@app.get("/admin/api-metering/summary")
+def get_admin_api_metering_summary(
+    user_id: int = None,
+    endpoint: str = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    from models import APIRequestLog, User
+    from sqlalchemy import func
+
+    query = db.query(
+        User.id,
+        User.name,
+        User.email,
+        func.count(APIRequestLog.id).label("total_requests"),
+        func.avg(APIRequestLog.execution_time_ms).label("avg_latency"),
+        func.sum(
+            func.case(
+                (APIRequestLog.status_code >= 400, 1),
+                else_=0
+            )
+        ).label("failed_requests")
+    ).join(APIRequestLog, APIRequestLog.user_id == User.id, isouter=True)
+
+    if user_id:
+        query = query.filter(User.id == user_id)
+    if endpoint:
+        query = query.filter(APIRequestLog.endpoint.like(f"%{endpoint}%"))
+
+    results = query.group_by(User.id, User.name, User.email).all()
+
+    user_usage = []
+    for r in results:
+        total_req = r.total_requests or 0
+        failed_req = int(r.failed_requests) if r.failed_requests is not None else 0
+        success_rate = round(((total_req - failed_req) / total_req * 100), 2) if total_req > 0 else 100.0
+        
+        user_usage.append({
+            "user_id": r.id,
+            "name": r.name,
+            "email": r.email,
+            "total_requests": total_req,
+            "avg_latency": round(float(r.avg_latency), 2) if r.avg_latency is not None else 0.0,
+            "failed_requests": failed_req,
+            "success_rate": success_rate
+        })
+
+    user_usage = sorted(user_usage, key=lambda x: x["total_requests"], reverse=True)
+
+    return {
+        "user_usage": user_usage
+    }
+
+
+@app.get("/admin/api-metering/logs")
+def get_admin_api_metering_logs(
+    user_id: int = None,
+    endpoint: str = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    from models import APIRequestLog, User
+    
+    query = db.query(
+        APIRequestLog.id,
+        APIRequestLog.endpoint,
+        APIRequestLog.method,
+        APIRequestLog.request_type,
+        APIRequestLog.status_code,
+        APIRequestLog.execution_time_ms,
+        APIRequestLog.ip_address,
+        APIRequestLog.timestamp,
+        User.email.label("user_email")
+    ).join(User, User.id == APIRequestLog.user_id, isouter=True)
+
+    if user_id:
+        query = query.filter(APIRequestLog.user_id == user_id)
+    if endpoint:
+        query = query.filter(APIRequestLog.endpoint.like(f"%{endpoint}%"))
+
+    total_count = query.count()
+    logs = query.order_by(APIRequestLog.timestamp.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total_count,
+        "logs": [
+            {
+                "id": l.id,
+                "endpoint": l.endpoint,
+                "method": l.method,
+                "request_type": l.request_type,
+                "status_code": l.status_code,
+                "execution_time_ms": round(l.execution_time_ms, 2),
+                "ip_address": l.ip_address,
+                "timestamp": str(l.timestamp),
+                "user_email": l.user_email or "Anonymous"
+            }
+            for l in logs
+        ]
+    }
+
+
+@app.get("/admin/api-metering/export")
+def export_admin_api_metering_logs(
+    user_id: int = None,
+    endpoint: str = None,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    from models import APIRequestLog, User
+    import csv
+    import io
+
+    query = db.query(
+        APIRequestLog.id,
+        APIRequestLog.endpoint,
+        APIRequestLog.method,
+        APIRequestLog.request_type,
+        APIRequestLog.status_code,
+        APIRequestLog.execution_time_ms,
+        APIRequestLog.ip_address,
+        APIRequestLog.timestamp,
+        User.email.label("user_email")
+    ).join(User, User.id == APIRequestLog.user_id, isouter=True)
+
+    if user_id:
+        query = query.filter(APIRequestLog.user_id == user_id)
+    if endpoint:
+        query = query.filter(APIRequestLog.endpoint.like(f"%{endpoint}%"))
+
+    logs = query.order_by(APIRequestLog.timestamp.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    writer.writerow([
+        "Log ID", "User Email", "Endpoint", "Method", 
+        "Request Type", "Status Code", "Execution Time (ms)", 
+        "IP Address", "Timestamp"
+    ])
+    
+    for l in logs:
+        writer.writerow([
+            l.id,
+            l.user_email or "Anonymous",
+            l.endpoint,
+            l.method,
+            l.request_type,
+            l.status_code,
+            round(l.execution_time_ms, 2),
+            l.ip_address,
+            str(l.timestamp)
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=api_request_logs.csv"}
+    )
 
 
 @app.get("/recommend-tier")
@@ -842,18 +1325,35 @@ def _compute_invoice_data(user_id: int) -> dict:
         plan = user.plan if user else "Free"
 
     with engine.connect() as conn:
+        # Total active files
         result = conn.execute(
             text("SELECT COUNT(*) FROM usage_logs WHERE user_id = :user_id"),
             {"user_id": user_id}
         )
         total_files = result.scalar() or 0
 
+        # Total storage size
         result = conn.execute(
             text("SELECT SUM(filesize) FROM usage_logs WHERE user_id = :user_id"),
             {"user_id": user_id}
         )
         total_bytes = int(result.scalar() or 0)
 
+        # API Request Count
+        result_api = conn.execute(
+            text("SELECT COUNT(*) FROM api_request_logs WHERE user_id = :user_id"),
+            {"user_id": user_id}
+        )
+        api_requests_count = result_api.scalar() or 0
+
+        # Bandwidth Bytes
+        result_bw = conn.execute(
+            text("SELECT SUM(bytes_transferred) FROM bandwidth_usage WHERE user_id = :user_id"),
+            {"user_id": user_id}
+        )
+        bandwidth_bytes = int(result_bw.scalar() or 0)
+
+    # Costs math
     storage_used_mb = round(total_bytes / (1024 * 1024), 2)
     plan_rates = {
         "Free": 0.0,
@@ -861,7 +1361,18 @@ def _compute_invoice_data(user_id: int) -> dict:
         "Enterprise": 1.5
     }
     rate_per_mb = plan_rates.get(plan, 2.0)
-    total_amount = round(storage_used_mb * rate_per_mb, 2)
+    storage_cost = round(storage_used_mb * rate_per_mb, 2)
+
+    api_request_cost = round(api_requests_count * 0.02, 2)
+
+    from bandwidth_service import get_bandwidth_price_per_gb
+    price_per_gb = get_bandwidth_price_per_gb()
+    bandwidth_gb = bandwidth_bytes / (1024 * 1024 * 1024)
+    bandwidth_cost = round(bandwidth_gb * price_per_gb, 2)
+
+    subtotal = round(storage_cost + api_request_cost + bandwidth_cost, 2)
+    taxes = round(subtotal * 0.18, 2) # 18% GST/Taxes
+    total_amount = round(subtotal + taxes, 2)
 
     from datetime import datetime
     now = datetime.now()
@@ -876,6 +1387,14 @@ def _compute_invoice_data(user_id: int) -> dict:
         "total_files": total_files,
         "storage_used_mb": storage_used_mb,
         "rate_per_mb": rate_per_mb,
+        "storage_cost": storage_cost,
+        "api_requests_count": api_requests_count,
+        "api_request_cost": api_request_cost,
+        "bandwidth_bytes": bandwidth_bytes,
+        "bandwidth_cost": bandwidth_cost,
+        "bandwidth_price_per_gb": price_per_gb,
+        "subtotal": subtotal,
+        "taxes": taxes,
         "total_amount": total_amount,
         "generated_at": generated_at
     }
@@ -1149,12 +1668,16 @@ def invalidate_user_cache(user_id: int):
 
 
 def get_file_stream_and_size(filename: str):
-    """Retrieve a file stream and its size. Abstraction layer for S3 switch later."""
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(file_path):
+    """Retrieve a file stream and its size. Abstraction layer for GCS/Local switch."""
+    if not storage_provider.file_exists(filename):
         return None, 0
-    file_size = os.path.getsize(file_path)
-    return open(file_path, "rb"), file_size
+    try:
+        size = storage_provider.get_file_size(filename)
+        stream = storage_provider.download_file(filename)
+        return stream, size
+    except Exception as e:
+        logger.error(f"Error streaming file {filename}: {e}")
+        return None, 0
 
 
 @app.get("/download/{file_id}")
@@ -1213,6 +1736,21 @@ def download_file(
         )
         conn.commit()
 
+    try:
+        request_id = getattr(request.state, "request_id", None)
+        ip_address = request.client.host if request.client else "unknown"
+        from bandwidth_service import BandwidthService
+        BandwidthService.log_bandwidth_async(
+            user_id=current_user.id,
+            file_id=file_id,
+            operation="DOWNLOAD",
+            bytes_transferred=size,
+            ip_address=ip_address,
+            request_id=request_id
+        )
+    except Exception as e:
+        print(f"Failed to log download bandwidth: {e}")
+
     return StreamingResponse(
         stream,
         media_type="application/octet-stream",
@@ -1264,13 +1802,12 @@ def delete_file(
             detail="Forbidden. You do not own this file."
         )
 
-    # 4. Remove physical file from uploads folder
-    file_path = os.path.join(UPLOAD_FOLDER, storage_filename)
+    # 4. Remove file from storage provider
     try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        if storage_provider.file_exists(storage_filename):
+            storage_provider.delete_file(storage_filename)
     except Exception as e:
-        logger.error(f"Failed to delete physical file {file_path}: {e}")
+        logger.error(f"Failed to delete stored file {storage_filename}: {e}")
 
     # 5. Delete its database record
     with engine.connect() as conn:
@@ -1360,55 +1897,81 @@ def compress_file(
             detail="Forbidden. You do not own this file."
         )
 
-    file_path = os.path.join(UPLOAD_FOLDER, storage_filename)
-    if not os.path.exists(file_path):
+    if not storage_provider.file_exists(storage_filename):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Physical file not found on storage."
         )
 
     import zipfile
+    import tempfile
     import uuid
+    import shutil
 
     zip_original_filename = original_filename + ".zip"
     safe_zip_original = sanitize_filename(zip_original_filename)
     unique_id = str(uuid.uuid4())
     zip_storage_filename = f"{current_user.id}_{unique_id}_{safe_zip_original}"
-    zip_path = os.path.join(UPLOAD_FOLDER, zip_storage_filename)
     
     base, ext = os.path.splitext(zip_storage_filename)
     orig_base, orig_ext = os.path.splitext(zip_original_filename)
     counter = 1
-    while os.path.exists(zip_path):
+    while storage_provider.file_exists(zip_storage_filename):
         zip_storage_filename = f"{base}_{counter}{ext}"
-        zip_path = os.path.join(UPLOAD_FOLDER, zip_storage_filename)
         zip_original_filename = f"{orig_base}_{counter}{orig_ext}"
         counter += 1
 
+    temp_orig_fd, temp_orig_path = tempfile.mkstemp()
+    temp_zip_fd, temp_zip_path = tempfile.mkstemp()
     try:
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.write(file_path, arcname=original_filename)
+        # Download original to temp file
+        with os.fdopen(temp_orig_fd, "wb") as f_orig:
+            stream = storage_provider.download_file(storage_filename)
+            shutil.copyfileobj(stream, f_orig)
+
+        # Create zip at temp zip path
+        with zipfile.ZipFile(temp_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(temp_orig_path, arcname=original_filename)
+
+        zip_size = os.path.getsize(temp_zip_path)
+
+        # Calculate zip SHA-256
+        sha256 = hashlib.sha256()
+        with open(temp_zip_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256.update(chunk)
+        zip_hash = sha256.hexdigest()
+
+        # Upload zip to active storage provider
+        with open(temp_zip_path, "rb") as f_upload:
+            storage_provider.upload_file(f_upload, zip_storage_filename)
+
     except Exception as e:
         logger.error(f"Failed to compress file {original_filename}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to compress file."
         )
-
-    zip_size = os.path.getsize(zip_path)
-
-    sha256 = hashlib.sha256()
-    with open(zip_path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha256.update(chunk)
-    zip_hash = sha256.hexdigest()
+    finally:
+        for path in (temp_orig_path, temp_zip_path):
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
 
     user_plan = current_user.plan
+    # Increment Redis hashes generated count
+    try:
+        redis_client._get_client().incr("wecloud:integrity:hashes_generated")
+    except Exception:
+        pass
+
     with engine.connect() as conn:
         conn.execute(
             text(
-                "INSERT INTO usage_logs (filename, original_filename, storage_filename, filesize, plan, user_id, sha256_hash, download_count, storage_class) "
-                "VALUES (:filename, :original_filename, :storage_filename, :filesize, :plan, :user_id, :sha256_hash, 0, 'STANDARD')"
+                "INSERT INTO usage_logs (filename, original_filename, storage_filename, filesize, plan, user_id, sha256_hash, download_count, storage_class, mime_type, integrity_status) "
+                "VALUES (:filename, :original_filename, :storage_filename, :filesize, :plan, :user_id, :sha256_hash, 0, 'STANDARD', 'application/zip', 'VERIFIED')"
             ),
             {
                 "filename": zip_original_filename,
@@ -1802,6 +2365,9 @@ def _compute_optimization_report(files: list, plan: str, total_limit_bytes: int)
             "last_downloaded_at": last_dl,
             "storage_class": f.get("storage_class") or "STANDARD",
             "days_inactive": days_inactive(f),
+            "storage_filename": f.get("storage_filename"),
+            "mime_type": f.get("mime_type") or "application/octet-stream",
+            "integrity_status": f.get("integrity_status") or "VERIFIED"
         }
 
     return {
@@ -1851,7 +2417,7 @@ def get_storage_optimization(current_user: User = Depends(get_current_user)):
 
     with engine.connect() as conn:
         result = conn.execute(
-            text("SELECT id, filename, filesize, uploaded_at, sha256_hash, download_count, last_downloaded_at, storage_class, original_filename, storage_filename FROM usage_logs WHERE user_id = :uid"),
+            text("SELECT id, filename, filesize, uploaded_at, sha256_hash, download_count, last_downloaded_at, storage_class, original_filename, storage_filename, mime_type, integrity_status FROM usage_logs WHERE user_id = :uid"),
             {"uid": current_user.id}
         )
         rows = result.fetchall()
@@ -1860,7 +2426,8 @@ def get_storage_optimization(current_user: User = Depends(get_current_user)):
         {
             "id": r[0], "filename": r[8] or r[1], "filesize": r[2],
             "uploaded_at": r[3], "sha256_hash": r[4], "download_count": r[5],
-            "last_downloaded_at": r[6], "storage_class": r[7], "storage_filename": r[9] or r[1]
+            "last_downloaded_at": r[6], "storage_class": r[7], "storage_filename": r[9] or r[1],
+            "mime_type": r[10], "integrity_status": r[11]
         }
         for r in rows
     ]
@@ -1871,13 +2438,7 @@ def get_storage_optimization(current_user: User = Depends(get_current_user)):
 # Admin Dashboard & User / File Management RBAC Endpoints
 # ---------------------------------------------------------------------------
 
-def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
-    if getattr(current_user, "role", "customer").lower() != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden. Admin access required."
-        )
-    return current_user
+# get_current_admin is defined above for route registration order
 
 
 @app.get("/admin/dashboard-cards")
@@ -2003,7 +2564,7 @@ def get_admin_storage_optimization(
 
     with engine.connect() as conn:
         files_res = conn.execute(
-            text("SELECT id, user_id, filename, filesize, uploaded_at, sha256_hash, download_count, last_downloaded_at, storage_class, original_filename, storage_filename FROM usage_logs")
+            text("SELECT id, user_id, filename, filesize, uploaded_at, sha256_hash, download_count, last_downloaded_at, storage_class, original_filename, storage_filename, mime_type, integrity_status FROM usage_logs")
         )
         all_rows = files_res.fetchall()
 
@@ -2014,7 +2575,8 @@ def get_admin_storage_optimization(
         user_files[r[1]].append({
             "id": r[0], "filename": r[9] or r[2], "filesize": r[3],
             "uploaded_at": r[4], "sha256_hash": r[5], "download_count": r[6],
-            "last_downloaded_at": r[7], "storage_class": r[8]
+            "last_downloaded_at": r[7], "storage_class": r[8], "storage_filename": r[10] or r[2],
+            "mime_type": r[11], "integrity_status": r[12]
         })
 
     total_potential_savings = 0
@@ -2206,7 +2768,7 @@ def admin_delete_user(
     if user.id == current_admin.id:
         raise HTTPException(status_code=400, detail="You cannot delete yourself.")
 
-    # Remove files from uploads folder
+    # Remove files from storage provider
     with engine.connect() as conn:
         res = conn.execute(
             text("SELECT COALESCE(storage_filename, filename) FROM usage_logs WHERE user_id = :user_id"),
@@ -2215,12 +2777,11 @@ def admin_delete_user(
         filenames = [r[0] for r in res.fetchall()]
         
     for fname in filenames:
-        file_path = os.path.join(UPLOAD_FOLDER, fname)
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
+        try:
+            if storage_provider.file_exists(fname):
+                storage_provider.delete_file(fname)
+        except Exception:
+            pass
 
     # Clear records
     with engine.connect() as conn:
@@ -2401,16 +2962,7 @@ def get_system_health(
     redis_metrics = redis_client.get_redis_stats()
     redis_status = "Healthy" if redis_metrics["status"] == "Online" else "Offline"
 
-    storage_status = "Healthy"
-    try:
-        if not os.path.exists(UPLOAD_FOLDER):
-            os.makedirs(UPLOAD_FOLDER)
-        temp_file = os.path.join(UPLOAD_FOLDER, ".healthcheck")
-        with open(temp_file, "w") as f:
-            f.write("OK")
-        os.remove(temp_file)
-    except Exception:
-        storage_status = "Degraded"
+    storage_status = "Healthy" if storage_provider.check_health() else "Degraded"
 
     forecast_status = "Healthy"
     try:
@@ -2427,5 +2979,136 @@ def get_system_health(
         "forecast_engine": forecast_status,
         "redis_metrics": redis_metrics
     }
+
+
+@app.post("/files/{file_id}/verify-integrity")
+def verify_file_integrity(
+    file_id: int,
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT filename, storage_filename, sha256_hash, user_id, original_filename FROM usage_logs WHERE id = :id"),
+            {"id": file_id}
+        )
+        row = result.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    filename = row[0]
+    storage_filename = row[1] or filename
+    stored_hash = row[2]
+    owner_id = row[3]
+    original_filename = row[4] or filename
+
+    # Check ownership or admin status
+    is_admin = getattr(current_user, "role", "").lower() == "admin"
+    if not is_admin and current_user.id != owner_id:
+        raise HTTPException(status_code=403, detail="Forbidden. You do not own this file.")
+
+    # Read file and compute hash
+    status_res = "CORRUPTED"
+
+    # Increment total hashes count in Redis
+    try:
+        r_client = redis_client._get_client()
+        if r_client:
+            r_client.incr("wecloud:integrity:hashes_generated")
+    except Exception:
+        pass
+
+    if storage_provider.file_exists(storage_filename):
+        sha256 = hashlib.sha256()
+        try:
+            stream = storage_provider.download_file(storage_filename)
+            for chunk in iter(lambda: stream.read(8192), b""):
+                sha256.update(chunk)
+            computed_hash = sha256.hexdigest()
+            if computed_hash == stored_hash:
+                status_res = "VERIFIED"
+        except Exception as e:
+            logger.error(f"Error reading file for integrity check: {e}")
+
+    # Update DB
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE usage_logs SET integrity_status = :status WHERE id = :id"),
+            {"status": status_res, "id": file_id}
+        )
+        conn.commit()
+
+    # Log audit event
+    log_audit_event(
+        user=current_user,
+        action="Integrity Verification",
+        resource_type="File",
+        resource_name=original_filename,
+        description=f"Verified integrity of {original_filename}. Status: {status_res}",
+        request=request
+    )
+
+    return {"status": status_res}
+
+
+@app.get("/admin/integrity-stats")
+def get_admin_integrity_stats(
+    current_admin: User = Depends(get_current_admin)
+):
+    with engine.connect() as conn:
+        verified = conn.execute(text("SELECT COUNT(*) FROM usage_logs WHERE integrity_status = 'VERIFIED'")).scalar() or 0
+        corrupted = conn.execute(text("SELECT COUNT(*) FROM usage_logs WHERE integrity_status = 'CORRUPTED'")).scalar() or 0
+
+        # Duplicate count: find all files that share a hash with another file
+        dups = conn.execute(text(
+            "SELECT COUNT(id) FROM usage_logs "
+            "WHERE sha256_hash IN ("
+            "  SELECT sha256_hash FROM usage_logs "
+            "  WHERE sha256_hash IS NOT NULL AND sha256_hash != '' "
+            "  GROUP BY sha256_hash HAVING COUNT(*) > 1"
+            ")"
+        )).scalar() or 0
+
+        total_files = conn.execute(text("SELECT COUNT(*) FROM usage_logs")).scalar() or 0
+
+        # Retrieve corrupted list
+        corrupted_list_res = conn.execute(text(
+            "SELECT id, filename, original_filename, filesize, uploaded_at, plan, integrity_status "
+            "FROM usage_logs WHERE integrity_status = 'CORRUPTED' ORDER BY uploaded_at DESC"
+        )).fetchall()
+
+    corrupted_list = [
+        {
+            "id": r[0],
+            "filename": r[2] or r[1],
+            "filesize": r[3],
+            "uploaded_at": r[4].isoformat() if r[4] else None,
+            "plan": r[5],
+            "integrity_status": r[6]
+        }
+        for r in corrupted_list_res
+    ]
+
+    # Retrieve Redis count
+    redis_hashes = 0
+    try:
+        r_client = redis_client._get_client()
+        if r_client:
+            redis_hashes = int(r_client.get("wecloud:integrity:hashes_generated") or 0)
+    except Exception:
+        pass
+
+    total_hashes = max(total_files + redis_hashes, total_files)
+
+    return {
+        "verified_files": verified,
+        "corrupted_files": corrupted,
+        "duplicate_files": dups,
+        "total_hashes_generated": total_hashes,
+        "corrupted_list": corrupted_list
+    }
+
+
 
 

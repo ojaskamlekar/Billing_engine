@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+
 import {
   ResponsiveContainer,
   LineChart,
@@ -24,10 +24,9 @@ import {
   Calendar,
   AlertCircle,
   Sparkles,
-  Info,
-  PieChart as PieIcon
+  Info
 } from "lucide-react";
-import PremiumLockOverlay from "./PremiumLockOverlay";
+
 
 const CATEGORY_COLORS = {
   "Images": "#6366f1",
@@ -257,7 +256,7 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
     const uploadsTimeline = Object.values(dailyMap).map(v => ({
       ...v,
       sizeMB: parseFloat((v.size / (1024 * 1024)).toFixed(2)),
-      label: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(safeParseDate(v.date))
+      label: new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(v.date + "T00:00:00"))
     })).sort((a, b) => a.date.localeCompare(b.date));
 
     // 2. Storage Growth timeline (cumulative MB over time)
@@ -511,3 +510,6 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
     </div>
   );
 }
+
+// Export for test runner
+export { safeParseDate, getFileCategory, AnalyticsTab };

@@ -32,7 +32,7 @@ def init_db():
     """
     # Import models here so their classes are registered with Base
     # before create_all() is called.
-    from models import User, AuditLog, UsageLog  # noqa: F401
+    from models import User, AuditLog, UsageLog, APIRequestLog, BandwidthUsage  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
 
@@ -127,5 +127,14 @@ def init_db():
         ))
         conn.execute(text(
             "ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        ))
+        conn.execute(text(
+            "ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS mime_type VARCHAR"
+        ))
+        conn.execute(text(
+            "ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS integrity_status VARCHAR DEFAULT 'VERIFIED'"
+        ))
+        conn.execute(text(
+            "ALTER TABLE api_request_logs ADD COLUMN IF NOT EXISTS request_id VARCHAR"
         ))
         conn.commit()

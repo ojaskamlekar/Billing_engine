@@ -6,7 +6,7 @@ import DashboardTabs from "./DashboardTabs";
 import NotificationBell from "./NotificationBell";
 import AlertPopover from "./AlertPopover";
 import OverviewTab from "./OverviewTab";
-import ForecastingTab from "./ForecastingTab";
+import APIMeteringTab from "./APIMeteringTab";
 import AnalyticsTab from "./AnalyticsTab";
 import UsageLogsTab from "./UsageLogsTab";
 import InvoiceTab from "./InvoiceTab";
@@ -182,19 +182,9 @@ export default function StorageDashboard({ onLogout, userName }) {
             onUpgradeClick={onUpgradeClick}
           />
         );
-      case "Forecasting":
+      case "API Metering":
         return (
-          <ForecastingTab
-            forecast={forecast}
-            usage={usage}
-            recommendation={recommendation}
-            loading={loading}
-            recLoading={recLoading}
-            recError={recError}
-            onRetryRecommendation={fetchRecommendation}
-            plan={plan}
-            onUpgradeClick={onUpgradeClick}
-          />
+          <APIMeteringTab />
         );
       case "Analytics":
         return (

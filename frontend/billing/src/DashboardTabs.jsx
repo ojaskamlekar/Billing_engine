@@ -7,10 +7,10 @@ function OverviewIcon() {
   );
 }
 
-function ForecastingIcon() {
+function MeteringIcon() {
   return (
     <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
     </svg>
   );
 }
@@ -66,7 +66,7 @@ function OptimizationIcon() {
 export default function DashboardTabs({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "Overview", label: "Overview", icon: <OverviewIcon /> },
-    { id: "Forecasting", label: "Forecasting", icon: <ForecastingIcon /> },
+    { id: "API Metering", label: "API Metering", icon: <MeteringIcon /> },
     { id: "Analytics", label: "Analytics", icon: <AnalyticsIcon /> },
     { id: "Storage Explorer", label: "Storage Explorer", icon: <LogsIcon /> },
     { id: "Invoice", label: "Invoice", icon: <InvoiceIcon /> },

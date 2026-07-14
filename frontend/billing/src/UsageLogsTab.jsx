@@ -74,6 +74,9 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
   const [downloadProgress, setDownloadProgress] = useState(null);
   const [completedDownloadId, setCompletedDownloadId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [selectedFileForDetails, setSelectedFileForDetails] = useState(null);
+  const [verifyingId, setVerifyingId] = useState(null);
+  const [verifyBeforeDownload, setVerifyBeforeDownload] = useState(true);
 
   // Destructure lifted filters
   const { searchQuery, fileType, planFilter, fromDate, toDate, sortBy, currentPage } = filters;
@@ -138,7 +141,39 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
     setFileToDelete(null);
   };
 
-  // Trigger file download
+  const handleVerifyIntegrity = async (file) => {
+    setVerifyingId(file.id);
+    try {
+      const token = localStorage.getItem("access_token");
+      const res = await fetch(`${API_BASE}/files/${file.id}/verify-integrity`, {
+        method: "POST",
+        headers: {
+          "Authorization": token ? `Bearer ${token}` : "",
+        }
+      });
+      const data = await res.json();
+      
+      if (res.ok) {
+        file.integrity_status = data.status;
+        if (selectedFileForDetails && selectedFileForDetails.id === file.id) {
+          setSelectedFileForDetails({ ...selectedFileForDetails, integrity_status: data.status });
+        }
+        setToast({
+          message: data.status === "VERIFIED" 
+            ? "✅ Integrity check passed! File hash matches perfectly."
+            : "❌ Integrity check failed! File is missing or corrupted.",
+          type: data.status === "VERIFIED" ? "success" : "error"
+        });
+      } else {
+        setToast({ message: data.detail || "Verification failed.", type: "error" });
+      }
+    } catch {
+      setToast({ message: "Verification request failed.", type: "error" });
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
   const handleDownload = async (file, isRetry = false) => {
     if (downloadingId !== null && !isRetry) return;
 
@@ -150,7 +185,7 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
       total: file.filesize || 0,
       speed: 0,
       eta: null,
-      status: "downloading"
+      status: verifyBeforeDownload ? "verifying" : "downloading"
     });
 
     const token = localStorage.getItem("access_token");
@@ -158,6 +193,38 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
+
+    if (verifyBeforeDownload) {
+      try {
+        const verifyRes = await fetch(`${API_BASE}/files/${file.id}/verify-integrity`, {
+          method: "POST",
+          headers
+        });
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json();
+          file.integrity_status = verifyData.status;
+          if (verifyData.status === "CORRUPTED") {
+            setToast({ message: "❌ Download blocked: File integrity verification failed!", type: "error" });
+            setDownloadingId(null);
+            setDownloadProgress(null);
+            return;
+          }
+          setToast({ message: "✅ Integrity Verified! Initiating secure download...", type: "success" });
+        }
+      } catch (err) {
+        console.error("Integrity check error:", err);
+      }
+    }
+
+    setDownloadProgress({
+      filename: file.filename,
+      percent: 0,
+      loaded: 0,
+      total: file.filesize || 0,
+      speed: 0,
+      eta: null,
+      status: "downloading"
+    });
 
     try {
       const url = `${API_BASE}/download/${file.id}`;
@@ -499,9 +566,19 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
           </div>
 
-          {/* Reset Filters Button */}
-          {isFilterActive && (
-            <div className="mt-3 flex justify-end">
+          {/* Option to verify integrity before download */}
+          <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
+            <label className="inline-flex items-center gap-2 text-sm text-slate-600 font-semibold cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={verifyBeforeDownload}
+                onChange={(e) => setVerifyBeforeDownload(e.target.checked)}
+                className="rounded border-slate-350 text-indigo-650 focus:ring-indigo-650 cursor-pointer h-4 w-4 accent-indigo-600"
+              />
+              <span className="text-slate-650">Verify file integrity before downloading</span>
+            </label>
+
+            {isFilterActive && (
               <button
                 type="button"
                 onClick={resetFilters}
@@ -512,8 +589,8 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                 </svg>
                 Reset Filters
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Main Content Area */}
@@ -579,6 +656,12 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                   </th>
                   <th
                     scope="col"
+                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left"
+                  >
+                    Integrity
+                  </th>
+                  <th
+                    scope="col"
                     className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right"
                   >
                     Actions
@@ -589,7 +672,7 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-6 py-12 text-center text-sm text-slate-500 animate-pulse"
                     >
                       Loading usage data…
@@ -625,8 +708,35 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
                         {formatDate(file.uploaded_at)}
                       </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        {file.integrity_status === "CORRUPTED" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-100">
+                            ❌ Failed
+                          </span>
+                        ) : file.integrity_status === "VERIFYING" ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-100 animate-pulse">
+                            ⏳ Verifying
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-100">
+                            ✅ Verified
+                          </span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* Info details button */}
+                          <button
+                            onClick={() => setSelectedFileForDetails(file)}
+                            className="inline-flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                            title="File Details & Fingerprint"
+                            aria-label={`Details for ${file.filename}`}
+                          >
+                            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+
                           {/* Download Button */}
                           <button
                             disabled={(downloadingId !== null && downloadingId !== file.id) || completedDownloadId === file.id || deletingId !== null}
@@ -853,7 +963,158 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
           </button>
         </div>
       )}
-      
+      {selectedFileForDetails && (
+        <FileDetailsModal 
+          file={selectedFileForDetails} 
+          onClose={() => setSelectedFileForDetails(null)} 
+          onVerify={handleVerifyIntegrity}
+          verifying={verifyingId === selectedFileForDetails.id}
+        />
+      )}
+    </div>
+  );
+}
+
+function FileDetailsModal({ file, onClose, onVerify, verifying }) {
+  const [copied, setCopied] = useState(false);
+  const [expandedFingerprint, setExpandedFingerprint] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(file.sha256_hash);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const fmt = (bytes) => {
+    if (!bytes || bytes === 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    const value = bytes / 1024 ** i;
+    return `${value.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+  };
+
+  const fmtDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-IN", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl text-left text-slate-100">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-2">
+            <svg className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 className="text-lg font-bold">Enterprise File Details</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer transition border-0 bg-transparent">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-4 text-sm">
+          {/* Filename */}
+          <div>
+            <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Original Filename</span>
+            <span className="mt-1 block font-medium text-slate-200 truncate" title={file.filename}>{file.filename}</span>
+          </div>
+
+          {/* Stored Name */}
+          <div>
+            <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Storage Filename</span>
+            <span className="mt-1 block font-mono text-xs text-slate-300 bg-slate-950/50 p-2 rounded-lg break-all">{file.storage_filename || file.filename}</span>
+          </div>
+
+          {/* SHA-256 Fingerprint */}
+          <div>
+            <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">SHA-256 Fingerprint</span>
+            <div className="mt-1.5 flex items-start gap-2 bg-slate-950/50 p-2 rounded-lg">
+              <span className={`font-mono text-xs text-indigo-300 break-all select-all flex-1 ${expandedFingerprint ? "" : "truncate max-w-[320px]"}`}>
+                {file.sha256_hash || "—"}
+              </span>
+              <button 
+                onClick={() => setExpandedFingerprint(!expandedFingerprint)}
+                className="text-xs text-slate-400 hover:text-indigo-400 transition bg-transparent border-0 cursor-pointer"
+              >
+                {expandedFingerprint ? "Collapse" : "Expand"}
+              </button>
+              <button 
+                onClick={handleCopy}
+                className="text-xs text-slate-400 hover:text-emerald-400 transition font-bold bg-transparent border-0 cursor-pointer"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+
+          {/* Metadata Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">File Size</span>
+              <span className="mt-1 block font-medium text-slate-200">{fmt(file.filesize)}</span>
+            </div>
+            <div>
+              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">File Type</span>
+              <span className="mt-1 block font-medium text-slate-200 truncate">{file.mime_type || "application/octet-stream"}</span>
+            </div>
+            <div>
+              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Upload Time</span>
+              <span className="mt-1 block font-medium text-slate-200">{fmtDate(file.uploaded_at)}</span>
+            </div>
+            <div>
+              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Integrity Status</span>
+              <span className="mt-1 block">
+                {file.integrity_status === "CORRUPTED" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-950/50 border border-rose-500 px-2.5 py-0.5 text-xs font-semibold text-rose-200">
+                    ❌ Integrity Failed
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/50 border border-emerald-500 px-2.5 py-0.5 text-xs font-semibold text-emerald-200">
+                    ✅ Integrity Verified
+                  </span>
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-slate-800 pt-4 flex justify-end gap-3">
+          <button
+            disabled={verifying}
+            onClick={() => onVerify(file)}
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 text-sm font-semibold text-white shadow-lg transition cursor-pointer border-0"
+          >
+            {verifying ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Verifying...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Verify Integrity
+              </>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-slate-700 hover:border-slate-600 bg-transparent px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

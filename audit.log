@@ -6,3 +6,4 @@ Timestamp: 2026-07-12 19:32:59.194387 | Action: DELETE_FILE | Filename: Ojas_res
 Timestamp: 2026-07-12 19:56:39.051242 | Action: DELETE_FILE | Filename: test_audit_file.txt | User: audit_tester_4387@example.com
 Timestamp: 2026-07-12 19:57:07.123080 | Action: DELETE_FILE | Filename: test_audit_file.txt | User: audit_tester_1452@example.com
 Timestamp: 2026-07-13 17:33:49.057957 | Action: DELETE_FILE | Filename: Dune-Part.Two.2024.1080p.WEB-DL.Hindi.5.1-English.5.1.ESub.x264-HDHub4u.Tv.mkv | User: ravina@gmail.com
+Timestamp: 2026-07-14 19:07:00.799083 | Action: DELETE_FILE | Filename: test_metering_file.txt | User: ojasbuddy@gmail.com
