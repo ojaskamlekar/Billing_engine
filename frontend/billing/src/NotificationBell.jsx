@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function NotificationBell({ alerts, onClick }) {
   const hasAlert = alerts && alerts.alert && alerts.severity && alerts.severity !== "none";

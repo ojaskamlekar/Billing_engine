@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function AlertPopover({ alerts, onClose }) {
   if (!alerts) return null;
@@ -65,11 +64,15 @@ export default function AlertPopover({ alerts, onClose }) {
               </div>
               <div className="flex justify-between py-2 px-3">
                 <span className="text-slate-500">Plan Limit</span>
-                <span className="font-semibold text-slate-900">{plan_limit_mb} MB</span>
+                <span className="font-semibold text-slate-900">
+                  {plan_limit_mb >= 1024 * 1024 ? `${(plan_limit_mb / (1024 * 1024)).toFixed(0)} TB` : plan_limit_mb >= 1024 ? `${(plan_limit_mb / 1024).toFixed(0)} GB` : `${plan_limit_mb} MB`}
+                </span>
               </div>
               <div className="flex justify-between py-2 px-3">
                 <span className="text-slate-500">Forecasted Storage</span>
-                <span className="font-bold text-red-600">{forecasted_storage_mb} MB</span>
+                <span className="font-bold text-red-600">
+                  {forecasted_storage_mb >= 1024 * 1024 ? `${(forecasted_storage_mb / (1024 * 1024)).toFixed(2)} TB` : forecasted_storage_mb >= 1024 ? `${(forecasted_storage_mb / 1024).toFixed(2)} GB` : `${forecasted_storage_mb} MB`}
+                </span>
               </div>
               <div className="flex justify-between items-center py-2 px-3">
                 <span className="text-slate-500">Recommended Upgrade</span>

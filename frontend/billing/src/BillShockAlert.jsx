@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function BillShockAlert({ alertData, loading, error }) {
   if (loading) {
@@ -70,12 +69,16 @@ export default function BillShockAlert({ alertData, loading, error }) {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs lg:text-right shrink-0 lg:self-center">
           <div className="flex items-center gap-2">
             <span className="opacity-80">Plan:</span>
-            <span className="font-semibold">{current_plan} ({plan_limit_mb} MB limit)</span>
+            <span className="font-semibold">
+              {current_plan} ({plan_limit_mb >= 1024 * 1024 ? `${(plan_limit_mb / (1024 * 1024)).toFixed(0)} TB` : plan_limit_mb >= 1024 ? `${(plan_limit_mb / 1024).toFixed(0)} GB` : `${plan_limit_mb} MB`} limit)
+            </span>
           </div>
 
           <div className="flex items-center gap-2 border-l border-slate-300 lg:border-current/20 pl-4">
             <span className="opacity-80">Forecasted usage:</span>
-            <span className="font-bold underline decoration-wavy decoration-red-500/80">{forecasted_storage_mb} MB</span>
+            <span className="font-bold underline decoration-wavy decoration-red-500/80">
+              {forecasted_storage_mb >= 1024 * 1024 ? `${(forecasted_storage_mb / (1024 * 1024)).toFixed(2)} TB` : forecasted_storage_mb >= 1024 ? `${(forecasted_storage_mb / 1024).toFixed(2)} GB` : `${forecasted_storage_mb} MB`}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 border-l border-slate-300 lg:border-current/20 pl-4">

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import PremiumLockOverlay from "./PremiumLockOverlay";
 
 function ChartIcon() {
   return (
@@ -181,7 +182,15 @@ function FileTypeAnalyticsCard({ usage, loading }) {
   );
 }
 
-export default function AnalyticsTab({ usage, loading }) {
+export default function AnalyticsTab({ usage, loading, plan = "Free", onUpgradeClick }) {
+  if (plan === "Free") {
+    return (
+      <PremiumLockOverlay
+        message="Upgrade to a Pro or Enterprise subscription to unlock detailed storage analytics and file type breakdown charts."
+        onUpgradeClick={onUpgradeClick}
+      />
+    );
+  }
   return (
     <div className="space-y-6">
       {/* Uploads Over Time (Large format) */}

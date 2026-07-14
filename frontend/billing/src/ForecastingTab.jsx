@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import PremiumLockOverlay from "./PremiumLockOverlay";
 
 function parseUploadDate(value) {
   if (!value) return null;
@@ -145,8 +146,18 @@ export default function ForecastingTab({
   loading,
   recLoading,
   recError,
-  onRetryRecommendation
+  onRetryRecommendation,
+  plan = "Free",
+  onUpgradeClick
 }) {
+  if (plan === "Free") {
+    return (
+      <PremiumLockOverlay
+        message="Upgrade to a Pro or Enterprise subscription to unlock AI-powered cost forecasting and trend projections."
+        onUpgradeClick={onUpgradeClick}
+      />
+    );
+  }
   const predictedStorage = forecast?.predicted_storage_mb ?? 0;
   const predictedCost = forecast?.predicted_cost ?? 0;
   const recommendedPlan = recommendation?.recommended_plan ?? "—";
@@ -250,15 +261,15 @@ export default function ForecastingTab({
               <div className="border-t border-slate-100 pt-3 text-[11px] text-slate-400 space-y-1">
                 <div className="flex justify-between">
                   <span>Free Tier Limit</span>
-                  <span>100 MB</span>
+                  <span>5 GB</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Pro Tier Limit</span>
-                  <span>500 MB</span>
+                  <span>100 GB</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Enterprise Limit</span>
-                  <span>1,000 MB+</span>
+                  <span>5 TB</span>
                 </div>
               </div>
             </div>

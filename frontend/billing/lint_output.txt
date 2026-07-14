@@ -1,0 +1,267 @@
+
+> billing@0.0.0 lint
+> eslint .
+
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\AdminDashboard.jsx
+     1:8    error    'React' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        no-unused-vars
+     6:9    error    'LogOut' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       no-unused-vars
+     6:17   error    'TrendingUp' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+     6:29   error    'TrendingDown' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 no-unused-vars
+     8:3    error    'UserPlus' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+     8:13   error    'FileText' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     no-unused-vars
+    62:7    error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  60 |     const end = numericVal;
+  61 |     if (end === 0) {
+> 62 |       setCount(0);
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  63 |       return;
+  64 |     }
+  65 |     const totalMiliseconds = duration;                                                                                                                                                                                                                     react-hooks/set-state-in-effect
+   726:127  warning  React Hook useEffect has missing dependencies: 'setPage' and 'setSearch'. Either include them or remove the dependency array. If 'setSearch' changes too often, find the parent component that defines it and wrap that definition in useCallback                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+   998:154  error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    no-empty
+  1002:95   error    Empty block statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    no-empty
+  1013:37   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  1011 |
+  1012 |   useEffect(() => {
+> 1013 |     if (activeTab === 'overview') { fetchCards(); fetchUsers(); fetchRecentLogs(); fetchSecurity(); }
+       |                                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  1014 |     if (activeTab === 'users') fetchUsers();
+  1015 |     if (activeTab === 'files') fetchFiles();
+  1016 |     if (activeTab === 'audit') fetchLogs();                                      react-hooks/set-state-in-effect
+  1019:6    warning  React Hook useEffect has missing dependencies: 'fetchCards', 'fetchFiles', 'fetchHealth', 'fetchLogs', 'fetchOptimization', 'fetchRecentLogs', 'fetchSecurity', and 'fetchUsers'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  1021:48   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  1019 |   }, [activeTab]);
+  1020 |
+> 1021 |   useEffect(() => { if (activeTab === 'audit') fetchLogs(); }, [auditPage, auditSearch, auditAction, auditStartDate, auditEndDate, auditSortBy]);
+       |                                                ^^^^^^^^^ Avoid calling setState() directly within an effect
+  1022 |
+  1023 |   const handleSuspend = (user) => {
+  1024 |     setConfirmAction({ type: user.is_active ? 'suspend' : 'reactivate', user });  react-hooks/set-state-in-effect
+  1021:64   warning  React Hook useEffect has missing dependencies: 'activeTab' and 'fetchLogs'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  1436:5    error    'total_files' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\AlertPopover.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\AnalyticsTab.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\AuditLogsTab.jsx
+    1:8   error  'React' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         no-unused-vars
+    6:3   error  'Calendar' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      no-unused-vars
+    7:3   error  'Filter' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        no-unused-vars
+    8:3   error  'ArrowUpDown' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+    9:3   error  'ChevronLeft' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+   10:3   error  'ChevronRight' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+  113:40  error  'plan' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          no-unused-vars
+  159:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  157 |   // Fetch when dependency inputs trigger
+  158 |   useEffect(() => {
+> 159 |     fetchLogs();
+      |     ^^^^^^^^^ Avoid calling setState() directly within an effect
+  160 |   }, [fetchLogs]);
+  161 |
+  162 |   // Debounce search input  react-hooks/set-state-in-effect
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\BillShockAlert.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\DashboardTabs.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\ForecastingTab.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\InvoiceTab.jsx
+  1:8   error  'React' is defined but never used  no-unused-vars
+  3:10  error  'api' is defined but never used    no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\NotificationBell.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\OverviewTab.jsx
+   90:3  error  'alerts' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-unused-vars
+  110:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  108 |   React.useEffect(() => {
+  109 |     if (totalStorageBytes < prevStorage) {
+> 110 |       setAnimateStorage(true);
+      |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  111 |       const timer = setTimeout(() => setAnimateStorage(false), 600);
+  112 |       return () => clearTimeout(timer);
+  113 |     }        react-hooks/set-state-in-effect
+  120:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  118 |     const currentCost = summary?.total_cost ?? 0;
+  119 |     if (currentCost < prevCost) {
+> 120 |       setAnimateCost(true);
+      |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  121 |       const timer = setTimeout(() => setAnimateCost(false), 600);
+  122 |       return () => clearTimeout(timer);
+  123 |     }  react-hooks/set-state-in-effect
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\PremiumLockOverlay.jsx
+  1:8  error  'React' is defined but never used  no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\StorageDashboard.jsx
+   29:10  error  'alertsLoading' is assigned a value but never used  no-unused-vars
+   30:10  error  'alertsError' is assigned a value but never used    no-unused-vars
+  151:30  error  'newPlan' is defined but never used                 no-unused-vars
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\StorageOptimizationTab.jsx
+   20:10  error  'daysAgo' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        no-unused-vars
+  407:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  405 |   }, []);
+  406 |
+> 407 |   useEffect(() => { load(); }, [load]);
+      |                     ^^^^ Avoid calling setState() directly within an effect
+  408 |
+  409 |   const handleAction = (action) => {
+  410 |     if (action === "upgrade") onNavigate?.("Subscription");  react-hooks/set-state-in-effect
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\UsageLogsTab.jsx
+    1:8   error    'React' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 no-unused-vars
+   14:10  error    'api' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   no-unused-vars
+   88:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  86 |   // Synchronize tempSearch if searchQuery is reset from parent
+  87 |   useEffect(() => {
+> 88 |     setTempSearch(searchQuery);
+     |     ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  89 |   }, [searchQuery]);
+  90 |
+  91 |   // Debounce logic for search  react-hooks/set-state-in-effect
+   94:7   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  92 |   useEffect(() => {
+  93 |     if (tempSearch === searchQuery) {
+> 94 |       setIsSearching(false);
+     |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  95 |       return;
+  96 |     }
+  97 |     setIsSearching(true);                                  react-hooks/set-state-in-effect
+   99:7   error    Error: Cannot access variable before it is declared
+
+`updateFilters` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+   97 |     setIsSearching(true);
+   98 |     const handler = setTimeout(() => {
+>  99 |       updateFilters({ searchQuery: tempSearch, currentPage: 1 });
+      |       ^^^^^^^^^^^^^ `updateFilters` accessed before it is declared
+  100 |       setIsSearching(false);
+  101 |     }, 500);
+  102 |
+
+  105 |
+  106 |   // Helper to update filters state in parent
+> 107 |   const updateFilters = (updates) => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 108 |     onFiltersChange((prev) => ({ ...prev, ...updates }));
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 109 |   };
+      | ^^^^^ `updateFilters` is declared here
+  110 |
+  111 |   // Auto-dismiss toast after 4 seconds
+  112 |   useEffect(() => {                                                              react-hooks/immutability
+  104:6   warning  React Hook useEffect has missing dependencies: 'searchQuery' and 'updateFilters'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+  176:25  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  174 |       const chunks = [];
+  175 |       let loadedBytes = 0;
+> 176 |       const startTime = Date.now();
+      |                         ^^^^^^^^^^ Cannot call impure function
+  177 |       let lastUpdate = Date.now();
+  178 |
+  179 |       while (true) {                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/purity
+  177:24  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  175 |       let loadedBytes = 0;
+  176 |       const startTime = Date.now();
+> 177 |       let lastUpdate = Date.now();
+      |                        ^^^^^^^^^^ Cannot call impure function
+  178 |
+  179 |       while (true) {
+  180 |         const { done, value } = await reader.read();                                                                                                                                                                                                                                                                                                                                                                                  react-hooks/purity
+  186:21  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+  184 |         loadedBytes += value.length;
+  185 |
+> 186 |         const now = Date.now();
+      |                     ^^^^^^^^^^ Cannot call impure function
+  187 |         if (now - lastUpdate > 100 || loadedBytes === totalBytes) {
+  188 |           const elapsed = (now - startTime) / 1000;
+  189 |           const speed = elapsed > 0 ? (loadedBytes / elapsed) : 0;                                                                                                                                                                                                                                                                                                 react-hooks/purity
+  299:55  error    Unnecessary escape character: \/                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  no-useless-escape
+
+C:\Users\Dell\OneDrive\Desktop\projects\billinginpy\frontend\billing\src\VerifyEmail.jsx
+  4:40  error  'Mail' is defined but never used     no-unused-vars
+  6:33  error  'onClose' is defined but never used  no-unused-vars
+
+âœ– 52 problems (48 errors, 4 warnings)
+

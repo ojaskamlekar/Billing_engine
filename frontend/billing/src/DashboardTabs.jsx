@@ -1,4 +1,3 @@
-import React from "react";
 
 function OverviewIcon() {
   return (
@@ -40,13 +39,40 @@ function InvoiceIcon() {
   );
 }
 
+function SubscriptionIcon() {
+  return (
+    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+  );
+}
+
+function AuditIcon() {
+  return (
+    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    </svg>
+  );
+}
+
+function OptimizationIcon() {
+  return (
+    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  );
+}
+
 export default function DashboardTabs({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "Overview", label: "Overview", icon: <OverviewIcon /> },
     { id: "Forecasting", label: "Forecasting", icon: <ForecastingIcon /> },
     { id: "Analytics", label: "Analytics", icon: <AnalyticsIcon /> },
-    { id: "Usage Logs", label: "Usage Logs", icon: <LogsIcon /> },
+    { id: "Storage Explorer", label: "Storage Explorer", icon: <LogsIcon /> },
     { id: "Invoice", label: "Invoice", icon: <InvoiceIcon /> },
+    { id: "Subscription", label: "Subscription", icon: <SubscriptionIcon /> },
+    { id: "Audit Logs", label: "Audit Logs", icon: <AuditIcon /> },
+    { id: "Optimization", label: "Optimization", icon: <OptimizationIcon /> },
   ];
 
   return (
