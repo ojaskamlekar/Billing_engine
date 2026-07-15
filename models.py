@@ -73,6 +73,7 @@ class APIRequestLog(Base):
     status_code = Column(Integer, nullable=False)
     execution_time_ms = Column(Float, nullable=False)
     ip_address = Column(String, nullable=False)
+    request_id = Column(String, nullable=True)
 
 
 class BandwidthUsage(Base):
@@ -86,6 +87,20 @@ class BandwidthUsage(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     ip_address = Column(String, nullable=True)
     request_id = Column(String, nullable=True)
+
+
+class PendingRegistration(Base):
+    __tablename__ = "pending_registrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    otp = Column(String, nullable=False)
+    otp_expiry = Column(DateTime, nullable=False)
+    otp_attempts = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 
 

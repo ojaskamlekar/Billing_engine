@@ -1,3 +1,5 @@
 {
-  "bandwidth_price_per_gb": 0.2
+  "storage_price_per_mb": 0.05,
+  "api_price_per_request": 0.001,
+  "bandwidth_price_per_gb": 10.0
 }

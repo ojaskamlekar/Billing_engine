@@ -445,7 +445,7 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, totalItems);
-  const paginatedUsage = sortedUsage.slice(startIndex, endIndex);
+const paginatedUsage = sortedUsage.slice(startIndex, endIndex);
 
   // Check if any filter is active (to show Reset button)
   const isFilterActive = searchQuery !== "" || fileType !== "All" || planFilter !== "All" || fromDate !== "" || toDate !== "" || sortBy !== "Newest";
@@ -453,24 +453,24 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
   const showEmpty = (usage.length === 0 || totalItems === 0) && !loading;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="space-y-6">
       
       {/* Storage Explorer Card */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm text-left">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-900">Storage Explorer</h2>
-          <p className="text-sm text-slate-500">
+      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white text-left shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <div className="border-b border-zinc-200 px-6 py-4.5">
+          <h2 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Storage Explorer</h2>
+          <p className="text-xs text-zinc-500 mt-1">
             Browse, search, filter, and manage all uploaded objects in your storage bucket.
           </p>
         </div>
 
         {/* Professional Filter Toolbar */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+        <div className="px-6 py-4 border-b border-zinc-200 bg-zinc-50/10">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
             
-            {/* Search Bar (50% wider, primary focus element) */}
+            {/* Search Bar */}
             <div className="lg:col-span-2">
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Search</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">Search</label>
               <div className="relative">
                 <input
                   type="text"
@@ -478,15 +478,15 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                   value={tempSearch}
                   onChange={(e) => setTempSearch(e.target.value)}
                   autoFocus={true}
-                  className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition focus:shadow-sm focus:scale-[1.01]"
+                  className="w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-3 py-2 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]/30 outline-none transition"
                 />
                 {isSearching ? (
-                  <svg className="absolute left-3 top-3.5 h-4 w-4 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
+                  <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 animate-spin text-[#635BFF]" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                 ) : (
-                  <svg className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 )}
@@ -495,11 +495,11 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
             {/* File Type Dropdown */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">File Type</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">File Type</label>
               <select
                 value={fileType}
                 onChange={(e) => updateFilters({ fileType: e.target.value, currentPage: 1 })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]/30 outline-none transition cursor-pointer"
               >
                 <option value="All">All Types</option>
                 <option value="PDF">PDF</option>
@@ -512,11 +512,11 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
             {/* Plan Dropdown */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Plan</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">Plan</label>
               <select
                 value={planFilter}
                 onChange={(e) => updateFilters({ planFilter: e.target.value, currentPage: 1 })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]/30 outline-none transition cursor-pointer"
               >
                 <option value="All">All Plans</option>
                 <option value="Free">Free</option>
@@ -527,33 +527,33 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
             {/* From Date */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">From</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">From</label>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => updateFilters({ fromDate: e.target.value, currentPage: 1 })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]/30 outline-none transition cursor-pointer"
               />
             </div>
 
             {/* To Date */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">To</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">To</label>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => updateFilters({ toDate: e.target.value, currentPage: 1 })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]/30 outline-none transition cursor-pointer"
               />
             </div>
 
             {/* Sort Dropdown */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Sort By</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">Sort By</label>
               <select
                 value={sortBy}
                 onChange={(e) => updateFilters({ sortBy: e.target.value, currentPage: 1 })}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF]/30 outline-none transition cursor-pointer"
               >
                 <option value="Newest">Newest</option>
                 <option value="Oldest">Oldest</option>
@@ -567,24 +567,24 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
           </div>
 
           {/* Option to verify integrity before download */}
-          <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-600 font-semibold cursor-pointer select-none">
+          <div className="mt-4 pt-3.5 border-t border-zinc-200/60 flex flex-wrap items-center justify-between gap-4">
+            <label className="inline-flex items-center gap-2 text-xs text-zinc-500 font-semibold cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={verifyBeforeDownload}
                 onChange={(e) => setVerifyBeforeDownload(e.target.checked)}
-                className="rounded border-slate-350 text-indigo-650 focus:ring-indigo-650 cursor-pointer h-4 w-4 accent-indigo-600"
+                className="rounded border-zinc-300 text-[#635BFF] focus:ring-[#635BFF]/30 cursor-pointer h-3.5 w-3.5 accent-[#635BFF]"
               />
-              <span className="text-slate-650">Verify file integrity before downloading</span>
+              <span>Verify file integrity before downloading</span>
             </label>
 
             {isFilterActive && (
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 transition cursor-pointer shadow-xs"
               >
-                <svg className="h-3.5 w-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 7.89M9 11l3-3 3 3m-3-3v12" />
                 </svg>
                 Reset Filters
@@ -596,28 +596,28 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
         {/* Main Content Area */}
         {showEmpty ? (
           /* Better Empty State: No uploaded files OR filters returned zero results */
-          <div className="py-20 text-center text-slate-500 bg-white flex flex-col items-center justify-center animate-in fade-in duration-300">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-50 text-slate-400 mb-5 shadow-inner animate-pulse">
-              <FolderOpen className="h-12 w-12 text-slate-300" />
+          <div className="py-16 text-center text-zinc-500 bg-white flex flex-col items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-400 mb-3.5 shadow-2xs">
+              <FolderOpen className="h-6 w-6 text-zinc-400" />
             </div>
-            <p className="text-lg font-bold text-slate-900">No files found</p>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm">
-              Upload your first file or change your filters.
+            <p className="text-xs font-bold text-zinc-800 uppercase tracking-wider">No files found</p>
+            <p className="text-xs text-zinc-500 mt-1 max-w-xs leading-relaxed">
+              Upload your first file or try clearing your filters.
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
               <button
                 type="button"
                 onClick={onUploadClick}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 transition cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#635BFF] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#5249f0] transition cursor-pointer border-0"
               >
-                <Upload className="h-4 w-4" />
+                <Upload className="h-3.5 w-3.5" />
                 Upload File
               </button>
               {isFilterActive && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-955 transition cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
                 >
                   Clear Filters
                 </button>
@@ -627,53 +627,53 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
         ) : (
           /* Usage logs list table */
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-zinc-200">
+              <thead className="bg-zinc-50/60 border-b border-zinc-200">
                 <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left"
+                    className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans text-left"
                   >
                     File Name
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left"
+                    className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans text-left"
                   >
                     File Size
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left"
+                    className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans text-left"
                   >
                     Plan
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left"
+                    className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans text-left"
                   >
                     Upload Date
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left"
+                    className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans text-left"
                   >
                     Integrity
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-right"
+                    className="px-6 py-3.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 font-sans text-right"
                   >
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className={`divide-y divide-slate-100 bg-white transition-opacity duration-300 ${isSearching ? "opacity-60" : "opacity-100"}`}>
+              <tbody className={`divide-y divide-zinc-150 bg-white transition-opacity duration-300 ${isSearching ? "opacity-60" : "opacity-100"}`}>
                 {loading ? (
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-6 py-12 text-center text-sm text-slate-500 animate-pulse"
+                      className="px-6 py-12 text-center text-xs text-zinc-500 animate-pulse font-medium"
                     >
                       Loading usage data…
                     </td>
@@ -682,57 +682,57 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                   paginatedUsage.map((file) => (
                     <tr
                       key={file.id}
-                      className={`transition-all duration-200 ease-out hover:bg-slate-50/70 hover:shadow-xs border-l-2 border-transparent hover:border-indigo-500 ${
+                      className={`transition-colors hover:bg-zinc-50/50 ${
                         deletingId === file.id ? "animate-row-delete" : ""
                       }`}
                     >
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-50 border border-slate-100">
+                      <td className="whitespace-nowrap px-6 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-50 border border-zinc-200/60 shrink-0">
                             <FileIconComponent filename={file.filename} />
                           </span>
                           <span 
                             onClick={() => handleDownload(file)}
-                            className="max-w-xs truncate text-sm font-semibold text-slate-900 hover:underline cursor-pointer block text-left sm:max-w-md transition-colors hover:text-indigo-600"
+                            className="max-w-xs truncate text-xs font-semibold text-zinc-800 hover:text-[#635BFF] hover:underline cursor-pointer block text-left sm:max-w-md transition-colors"
                           >
                             {highlightText(file.filename, searchQuery)}
                           </span>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 font-medium">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-zinc-600 font-medium">
                         {formatBytes(file.filesize)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-zinc-500 font-medium">
                         {file.plan}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-zinc-500 font-medium">
                         {formatDate(file.uploaded_at)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs">
                         {file.integrity_status === "CORRUPTED" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-100">
-                            ❌ Failed
+                          <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-100/50">
+                            Failed
                           </span>
                         ) : file.integrity_status === "VERIFYING" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-100 animate-pulse">
-                            ⏳ Verifying
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-100/50 animate-pulse">
+                            Verifying
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-100">
-                            ✅ Verified
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-100/50">
+                            Verified
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-zinc-600 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           {/* Info details button */}
                           <button
                             onClick={() => setSelectedFileForDetails(file)}
-                            className="inline-flex items-center justify-center p-2 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
-                            title="File Details & Fingerprint"
+                            className="inline-flex items-center justify-center p-1.5 rounded-md text-zinc-500 hover:text-[#635BFF] hover:bg-zinc-100 transition-colors cursor-pointer border-0 bg-transparent"
+                            title="File Details"
                             aria-label={`Details for ${file.filename}`}
                           >
-                            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </button>
@@ -741,29 +741,29 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                           <button
                             disabled={(downloadingId !== null && downloadingId !== file.id) || completedDownloadId === file.id || deletingId !== null}
                             onClick={() => handleDownload(file)}
-                            className={`inline-flex items-center justify-center p-2 rounded-lg transition-colors cursor-pointer ${
+                            className={`inline-flex items-center justify-center p-1.5 rounded-md transition-colors cursor-pointer border-0 bg-transparent ${
                               downloadingId === file.id
-                                ? "text-purple-600 cursor-not-allowed bg-slate-50 animate-pulse"
+                                ? "text-[#635BFF] cursor-not-allowed bg-zinc-50 animate-pulse"
                                 : completedDownloadId === file.id
                                 ? "text-emerald-600 bg-emerald-50 cursor-default"
                                 : (downloadingId !== null || deletingId !== null)
-                                ? "text-slate-300 cursor-not-allowed"
-                                : "text-slate-500 hover:text-purple-600 hover:bg-purple-50"
+                                ? "text-zinc-300 cursor-not-allowed"
+                                : "text-zinc-500 hover:text-[#635BFF] hover:bg-zinc-100"
                             }`}
-                            title={completedDownloadId === file.id ? "✓ Download Complete" : "Download File"}
+                            title={completedDownloadId === file.id ? "✓ Downloaded" : "Download File"}
                             aria-label={`Download ${file.filename}`}
                           >
                             {downloadingId === file.id ? (
-                              <svg className="animate-spin h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24">
+                              <svg className="animate-spin h-4.5 w-4.5 text-[#635BFF]" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                               </svg>
                             ) : completedDownloadId === file.id ? (
-                              <svg className="h-5 w-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <svg className="h-4.5 w-4.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             ) : (
-                              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                               </svg>
                             )}
@@ -774,23 +774,23 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                             <button
                               disabled={deletingId !== null || downloadingId !== null}
                               onClick={() => confirmDelete(file)}
-                              className={`inline-flex items-center justify-center p-2 rounded-lg transition-colors cursor-pointer ${
+                              className={`inline-flex items-center justify-center p-1.5 rounded-md transition-colors cursor-pointer border-0 bg-transparent ${
                                 deletingId === file.id
-                                  ? "text-red-500 cursor-not-allowed bg-slate-50"
+                                  ? "text-red-500 cursor-not-allowed bg-zinc-50"
                                   : deletingId !== null || downloadingId !== null
-                                  ? "text-slate-300 cursor-not-allowed"
-                                  : "text-slate-500 hover:text-red-600 hover:bg-red-50"
+                                  ? "text-zinc-300 cursor-not-allowed"
+                                  : "text-zinc-500 hover:text-red-600 hover:bg-zinc-100"
                               }`}
                               title="Delete File"
                               aria-label={`Delete ${file.filename}`}
                             >
                               {deletingId === file.id ? (
-                                <svg className="animate-spin h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24">
+                                <svg className="animate-spin h-4.5 w-4.5 text-red-500" fill="none" viewBox="0 0 24 24">
                                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                 </svg>
                               ) : (
-                                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <svg className="h-4.5 w-4.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                               )}
@@ -808,11 +808,11 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
         {/* Pagination Footer */}
         {usage.length > 0 && totalItems > 0 && (
-          <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/30">
-            <div className="text-xs text-slate-500">
-              Showing <span className="font-semibold text-slate-800">{startIndex + 1}</span> to{" "}
-              <span className="font-semibold text-slate-800">{endIndex}</span> of{" "}
-              <span className="font-semibold text-slate-800">{totalItems}</span> files
+          <div className="px-6 py-4.5 border-t border-zinc-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-50/10">
+            <div className="text-[11px] text-zinc-500 font-medium">
+              Showing <span className="font-semibold text-zinc-800">{startIndex + 1}</span> to{" "}
+              <span className="font-semibold text-zinc-800">{endIndex}</span> of{" "}
+              <span className="font-semibold text-zinc-800">{totalItems}</span> files
               {isFilterActive && " (filtered)"}
             </div>
             
@@ -821,24 +821,24 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() => updateFilters({ currentPage: Math.max(1, currentPage - 1) })}
-                className={`rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer select-none ${
-                  currentPage === 1 ? "opacity-50 cursor-not-allowed bg-slate-50" : "hover:bg-slate-50 hover:text-slate-955"
+                className={`rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-750 transition cursor-pointer select-none shadow-2xs ${
+                  currentPage === 1 ? "opacity-50 cursor-not-allowed bg-zinc-50" : "hover:bg-zinc-50 hover:text-zinc-950"
                 }`}
               >
                 Previous
               </button>
               
-              <span className="text-xs text-slate-500 font-medium px-2">
-                Page <span className="font-semibold text-slate-800">{currentPage}</span> of{" "}
-                <span className="font-semibold text-slate-800">{totalPages}</span>
+              <span className="text-xs text-zinc-500 font-medium px-1">
+                Page <span className="font-semibold text-zinc-800">{currentPage}</span> of{" "}
+                <span className="font-semibold text-zinc-800">{totalPages}</span>
               </span>
 
               <button
                 type="button"
                 disabled={currentPage === totalPages}
                 onClick={() => updateFilters({ currentPage: Math.min(totalPages, currentPage + 1) })}
-                className={`rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer select-none ${
-                  currentPage === totalPages ? "opacity-50 cursor-not-allowed bg-slate-50" : "hover:bg-slate-50 hover:text-slate-955"
+                className={`rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-755 transition cursor-pointer select-none shadow-2xs ${
+                  currentPage === totalPages ? "opacity-50 cursor-not-allowed bg-zinc-50" : "hover:bg-zinc-50 hover:text-zinc-950"
                 }`}
               >
                 Next
@@ -850,34 +850,29 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
       {/* Confirmation Dialog */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-left">
-            <h3 className="text-lg font-semibold text-slate-900">Delete File</h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Are you sure you want to permanently delete this file?
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-xl text-left">
+            <h3 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Delete File</h3>
+            <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
+              Are you sure you want to permanently delete this file? This action is irreversible.
             </p>
             {fileToDelete && (
-              <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs font-medium text-slate-700 truncate">
-                Filename: {fileToDelete.filename}
+              <div className="mt-3.5 rounded-lg bg-zinc-50 border border-zinc-200/80 p-2.5 text-xs font-semibold text-zinc-700 truncate font-mono">
+                {fileToDelete.filename}
               </div>
             )}
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex justify-end gap-2.5">
               <button
-                type="button"
-                onClick={() => {
-                  setShowConfirm(false);
-                  setFileToDelete(null);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                onClick={() => setShowConfirm(false)}
+                className="rounded-lg border border-zinc-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-750 hover:bg-zinc-50 transition cursor-pointer shadow-2xs"
               >
                 Cancel
               </button>
               <button
-                type="button"
                 onClick={handleConfirm}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition cursor-pointer"
+                className="rounded-lg bg-rose-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition cursor-pointer border-0 shadow-sm"
               >
-                Delete
+                Delete File
               </button>
             </div>
           </div>
@@ -886,16 +881,16 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
       {/* Real-time Download Progress Dialog Overlay */}
       {downloadProgress && (
-        <div className="fixed bottom-6 left-6 z-50 flex w-full max-w-sm flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl ring-1 ring-black/5 animate-in slide-in-from-left-5 duration-300 text-left">
+        <div className="fixed bottom-6 left-6 z-50 flex w-full max-w-sm flex-col rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl animate-in slide-in-from-left-5 duration-300 text-left">
           <div className="flex items-start justify-between mb-3">
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm font-bold text-slate-800 truncate">
-                {downloadProgress.status === "complete" ? "✓ Download Complete" : "Downloading file..."}
+              <h4 className="text-xs font-bold text-zinc-850 uppercase tracking-wider">
+                {downloadProgress.status === "complete" ? "✓ Download Complete" : "Downloading file"}
               </h4>
-              <p className="text-xs text-slate-400 truncate mt-0.5 font-mono">{downloadProgress.filename}</p>
+              <p className="text-xs text-zinc-500 truncate mt-1 font-mono">{downloadProgress.filename}</p>
             </div>
             {downloadProgress.status === "downloading" && (
-              <span className="text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded px-1.5 py-0.5 animate-pulse">
+              <span className="text-[9px] font-bold text-[#635BFF] bg-purple-50/50 border border-purple-200/50 rounded px-1.5 py-0.5 animate-pulse">
                 Active
               </span>
             )}
@@ -903,15 +898,15 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
           {/* Progress Bar Container */}
           <div className="space-y-2">
-            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden relative">
+            <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden relative">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  downloadProgress.status === "complete" ? "bg-emerald-500" : "bg-purple-600"
+                  downloadProgress.status === "complete" ? "bg-emerald-500" : "bg-[#635BFF]"
                 }`}
                 style={{ width: `${downloadProgress.percent}%` }}
               />
             </div>
-            <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
+            <div className="flex justify-between items-center text-[10px] text-zinc-500 font-bold">
               <span>{downloadProgress.percent.toFixed(0)}%</span>
               <span>{formatBytes(downloadProgress.loaded)} / {formatBytes(downloadProgress.total)}</span>
             </div>
@@ -919,16 +914,16 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
           {/* Transfer stats: Speed & ETA */}
           {downloadProgress.status === "downloading" && (
-            <div className="mt-3.5 pt-3 border-t border-slate-100 flex justify-between text-[11px] text-slate-400 font-semibold">
+            <div className="mt-3.5 pt-3 border-t border-zinc-150 flex justify-between text-[10px] text-zinc-450 font-semibold">
               <div className="flex items-center gap-1">
                 <span>Speed:</span>
-                <span className="text-slate-600 font-bold font-mono">
+                <span className="text-zinc-700 font-bold font-mono">
                   {downloadProgress.speed > 0 ? `${(downloadProgress.speed / (1024 * 1024)).toFixed(1)} MB/s` : "Calculating..."}
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <span>ETA:</span>
-                <span className="text-slate-600 font-bold">
+                <span className="text-zinc-700 font-bold">
                   {downloadProgress.eta !== null ? `${downloadProgress.eta}s remaining` : "Calculating..."}
                 </span>
               </div>
@@ -939,7 +934,7 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
 
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl ring-1 ring-black/5 animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 z-50 flex w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-4 shadow-xl animate-in slide-in-from-bottom-5 duration-300">
           <div className="flex items-center gap-3">
             {toast.type === "success" ? (
               <svg className="h-5 w-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -950,11 +945,11 @@ export default function UsageLogsTab({ usage, loading, filters, onFiltersChange,
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             )}
-            <p className="text-sm font-medium text-slate-800">{toast.message}</p>
+            <p className="text-xs font-semibold text-zinc-800">{toast.message}</p>
           </div>
           <button
             onClick={() => setToast(null)}
-            className="ml-auto pl-3 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            className="ml-auto pl-3 text-zinc-400 hover:text-zinc-650 transition cursor-pointer border-0 bg-transparent"
             aria-label="Close toast"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1002,51 +997,51 @@ function FileDetailsModal({ file, onClose, onVerify, verifying }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl text-left text-slate-100">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-xs p-4">
+      <div className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white p-6 shadow-xl text-left text-zinc-900 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
           <div className="flex items-center gap-2">
-            <svg className="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-4.5 w-4.5 text-[#635BFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <h3 className="text-lg font-bold">Enterprise File Details</h3>
+            <h3 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">File Metadata</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer transition border-0 bg-transparent">
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 cursor-pointer transition border-0 bg-transparent">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="mt-4 space-y-4 text-sm">
+        <div className="mt-4 space-y-4 text-xs">
           {/* Filename */}
           <div>
-            <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Original Filename</span>
-            <span className="mt-1 block font-medium text-slate-200 truncate" title={file.filename}>{file.filename}</span>
+            <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Original Filename</span>
+            <span className="mt-1 block font-semibold text-zinc-850 truncate" title={file.filename}>{file.filename}</span>
           </div>
 
           {/* Stored Name */}
           <div>
-            <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Storage Filename</span>
-            <span className="mt-1 block font-mono text-xs text-slate-300 bg-slate-950/50 p-2 rounded-lg break-all">{file.storage_filename || file.filename}</span>
+            <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Storage Path</span>
+            <span className="mt-1 block font-mono text-[10px] text-zinc-650 bg-zinc-50 border border-zinc-200 p-2.5 rounded-lg break-all leading-normal">{file.storage_filename || file.filename}</span>
           </div>
 
           {/* SHA-256 Fingerprint */}
           <div>
-            <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">SHA-256 Fingerprint</span>
-            <div className="mt-1.5 flex items-start gap-2 bg-slate-950/50 p-2 rounded-lg">
-              <span className={`font-mono text-xs text-indigo-300 break-all select-all flex-1 ${expandedFingerprint ? "" : "truncate max-w-[320px]"}`}>
+            <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">SHA-256 Fingerprint</span>
+            <div className="mt-1 flex items-start gap-2 bg-zinc-50 border border-zinc-200 p-2 rounded-lg">
+              <span className={`font-mono text-[10px] text-zinc-700 break-all select-all flex-1 leading-normal ${expandedFingerprint ? "" : "truncate max-w-[280px]"}`}>
                 {file.sha256_hash || "—"}
               </span>
               <button 
                 onClick={() => setExpandedFingerprint(!expandedFingerprint)}
-                className="text-xs text-slate-400 hover:text-indigo-400 transition bg-transparent border-0 cursor-pointer"
+                className="text-[10px] text-zinc-550 hover:text-[#635BFF] transition bg-transparent border-0 cursor-pointer font-bold"
               >
                 {expandedFingerprint ? "Collapse" : "Expand"}
               </button>
               <button 
                 onClick={handleCopy}
-                className="text-xs text-slate-400 hover:text-emerald-400 transition font-bold bg-transparent border-0 cursor-pointer"
+                className="text-[10px] text-[#635BFF] hover:text-[#5249f0] transition font-bold bg-transparent border-0 cursor-pointer"
               >
                 {copied ? "Copied!" : "Copy"}
               </button>
@@ -1056,27 +1051,27 @@ function FileDetailsModal({ file, onClose, onVerify, verifying }) {
           {/* Metadata Row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">File Size</span>
-              <span className="mt-1 block font-medium text-slate-200">{fmt(file.filesize)}</span>
+              <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">File Size</span>
+              <span className="mt-1 block font-semibold text-zinc-800">{fmt(file.filesize)}</span>
             </div>
             <div>
-              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">File Type</span>
-              <span className="mt-1 block font-medium text-slate-200 truncate">{file.mime_type || "application/octet-stream"}</span>
+              <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">MIME Type</span>
+              <span className="mt-1 block font-semibold text-zinc-800 truncate">{file.mime_type || "application/octet-stream"}</span>
             </div>
             <div>
-              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Upload Time</span>
-              <span className="mt-1 block font-medium text-slate-200">{fmtDate(file.uploaded_at)}</span>
+              <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Uploaded At</span>
+              <span className="mt-1 block font-semibold text-zinc-800">{fmtDate(file.uploaded_at)}</span>
             </div>
             <div>
-              <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Integrity Status</span>
+              <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Integrity</span>
               <span className="mt-1 block">
                 {file.integrity_status === "CORRUPTED" ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-950/50 border border-rose-500 px-2.5 py-0.5 text-xs font-semibold text-rose-200">
-                    ❌ Integrity Failed
+                  <span className="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[10px] font-bold text-rose-705">
+                    Failed
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/50 border border-emerald-500 px-2.5 py-0.5 text-xs font-semibold text-emerald-200">
-                    ✅ Integrity Verified
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-705">
+                    Verified
                   </span>
                 )}
               </span>
@@ -1084,15 +1079,21 @@ function FileDetailsModal({ file, onClose, onVerify, verifying }) {
           </div>
         </div>
 
-        <div className="mt-6 border-t border-slate-800 pt-4 flex justify-end gap-3">
+        <div className="mt-6 border-t border-zinc-200 pt-4 flex justify-end gap-2.5">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 px-3.5 py-1.5 text-xs font-semibold text-zinc-750 transition cursor-pointer shadow-2xs"
+          >
+            Close
+          </button>
           <button
             disabled={verifying}
             onClick={() => onVerify(file)}
-            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 text-sm font-semibold text-white shadow-lg transition cursor-pointer border-0"
+            className="flex items-center gap-1.5 rounded-lg bg-[#635BFF] hover:bg-[#5249f0] disabled:opacity-50 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition cursor-pointer border-0"
           >
             {verifying ? (
               <>
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
@@ -1100,18 +1101,12 @@ function FileDetailsModal({ file, onClose, onVerify, verifying }) {
               </>
             ) : (
               <>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
                 Verify Integrity
               </>
             )}
-          </button>
-          <button
-            onClick={onClose}
-            className="rounded-xl border border-slate-700 hover:border-slate-600 bg-transparent px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition cursor-pointer"
-          >
-            Close
           </button>
         </div>
       </div>

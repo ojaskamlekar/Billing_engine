@@ -30,12 +30,12 @@ import {
 import PremiumLockOverlay from "./PremiumLockOverlay";
 
 const CATEGORY_COLORS = {
-  "Images": "#6366f1",
-  "Videos": "#8b5cf6",
-  "Documents": "#10b981",
-  "Archives": "#eab308",
-  "Executables": "#f97316",
-  "Other": "#64748b"
+  "Images": "#635BFF",
+  "Videos": "#a855f7",
+  "Documents": "#71717a",
+  "Archives": "#27272a",
+  "Executables": "#d4d4d8",
+  "Other": "#e4e4e7"
 };
 
 function formatBytes(bytes) {
@@ -199,22 +199,30 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
     const now = new Date();
 
     // 1. Month growth percentage
-    const totalBeforeMonth = Math.max(1, summary.currentStorage - summary.growthThisMonth);
-    const monthlyPct = ((summary.growthThisMonth / totalBeforeMonth) * 100).toFixed(0);
-    if (parseInt(monthlyPct) > 0) {
-      list.push(`Storage increased by ${monthlyPct}% this month.`);
+    const prevStorage = summary.currentStorage - summary.growthThisMonth;
+    if (summary.growthThisMonth > 0) {
+      if (prevStorage <= 0) {
+        list.push("Storage increased by 100% this month.");
+      } else {
+        const monthlyPct = ((summary.growthThisMonth / prevStorage) * 100).toFixed(0);
+        if (parseInt(monthlyPct) > 0) {
+          list.push(`Storage increased by ${monthlyPct}% this month.`);
+        }
+      }
     }
 
     // 2. Primary category concentration
     const dominantCategory = distribution[0];
-    if (dominantCategory && dominantCategory.percentage > 10 && dominantCategory.size > 0) {
+    if (summary.totalActiveFiles > 1 && dominantCategory && dominantCategory.percentage > 10 && dominantCategory.percentage < 100) {
       list.push(`${dominantCategory.name} occupy ${dominantCategory.percentage.toFixed(0)}% of your storage.`);
     }
 
     // 3. Largest file share
-    if (summary.largestFile > 0 && summary.currentStorage > 0) {
+    if (summary.totalActiveFiles > 1 && summary.largestFile > 0 && summary.currentStorage > 0) {
       const largestFilePct = ((summary.largestFile / summary.currentStorage) * 100).toFixed(0);
-      list.push(`The largest file consumes ${largestFilePct}% of total storage.`);
+      if (parseInt(largestFilePct) < 100) {
+        list.push(`The largest file consumes ${largestFilePct}% of total storage.`);
+      }
     }
 
     // 4. Duplicate files count (by SHA-256 hash match)
@@ -287,26 +295,26 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-355 max-w-7xl mx-auto px-1">
+    <div className="space-y-6 max-w-7xl mx-auto px-1">
       
       {/* simplified Controls Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5 text-left">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 pb-4 text-left">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Storage Trend Analysis</h2>
-          <p className="text-xs text-slate-500 mt-1">Monitor historical capacities and size distribution trends.</p>
+          <h2 className="text-xs font-bold text-zinc-800 uppercase tracking-wider">Storage Trend Analysis</h2>
+          <p className="text-xs text-zinc-500 mt-1">Monitor historical capacities and size distribution trends.</p>
         </div>
 
         {/* Timeframe filters */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex bg-slate-100/80 p-0.5 rounded-xl border border-slate-200/50">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200">
             {["Today", "7 Days", "30 Days", "90 Days", "Custom"].map((t) => (
               <button
                 key={t}
                 onClick={() => setTimeframe(t)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
                   timeframe === t
-                    ? "bg-white text-indigo-600 shadow-sm font-bold"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-white text-zinc-950 shadow-xs border border-zinc-200/50"
+                    : "border border-transparent text-zinc-500 hover:text-zinc-900"
                 }`}
               >
                 {t}
@@ -320,14 +328,14 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
                 type="date"
                 value={customStart}
                 onChange={e => setCustomStart(e.target.value)}
-                className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-800"
+                className="px-2 py-1.5 border border-zinc-200 rounded-lg text-[11px] font-medium text-zinc-800 focus:outline-[#635BFF]"
               />
-              <span className="text-slate-400 text-xs font-medium">to</span>
+              <span className="text-zinc-400 text-xs font-medium">to</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={e => setCustomEnd(e.target.value)}
-                className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-800"
+                className="px-2 py-1.5 border border-zinc-200 rounded-lg text-[11px] font-medium text-zinc-800 focus:outline-[#635BFF]"
               />
             </div>
           )}
@@ -337,61 +345,60 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
       {/* Stripe-like 4 Summary Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Current Storage Used */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Current Storage Used</span>
-          <span className="text-2xl font-black text-slate-850 block mt-2">{formatBytes(summary.currentStorage)}</span>
-          <div className="mt-2 flex items-center text-[9px] text-slate-450 gap-1 font-semibold">
-            <HardDrive className="h-3 w-3 text-indigo-500" /> Active storage volume
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 text-left transition-all duration-200 hover:shadow-md hover:border-zinc-300 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+          <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider block">Current Storage Used</span>
+          <span className="text-2xl font-bold text-zinc-900 block mt-2">{formatBytes(summary.currentStorage)}</span>
+          <div className="mt-2.5 flex items-center text-[10px] text-zinc-550 gap-1.5 font-medium">
+            <HardDrive className="h-3.5 w-3.5 text-[#635BFF]" /> Active volume
           </div>
         </div>
 
         {/* Card 2: Storage Growth */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Storage Growth</span>
-          <span className="text-2xl font-black text-slate-850 block mt-2">+{formatBytes(summary.periodStorageAdded)}</span>
-          <div className="mt-2 flex items-center text-[9px] text-emerald-600 gap-1 font-semibold">
-            <TrendingUp className="h-3 w-3 text-emerald-500" /> Added in range
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 text-left transition-all duration-200 hover:shadow-md hover:border-zinc-300 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+          <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider block">Storage Growth</span>
+          <span className="text-2xl font-bold text-zinc-900 block mt-2">+{formatBytes(summary.periodStorageAdded)}</span>
+          <div className="mt-2.5 flex items-center text-[10px] text-emerald-600 gap-1.5 font-semibold">
+            <TrendingUp className="h-3.5 w-3.5" /> Added in range
           </div>
         </div>
 
         {/* Card 3: Total Active Files */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Active Files</span>
-          <span className="text-2xl font-black text-slate-850 block mt-2">{summary.totalActiveFiles}</span>
-          <div className="mt-2 flex items-center text-[9px] text-slate-450 gap-1 font-semibold">
-            <Files className="h-3 w-3 text-indigo-500" /> Active entities
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 text-left transition-all duration-200 hover:shadow-md hover:border-zinc-300 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+          <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider block">Total Active Files</span>
+          <span className="text-2xl font-bold text-zinc-900 block mt-2">{summary.totalActiveFiles}</span>
+          <div className="mt-2.5 flex items-center text-[10px] text-zinc-550 gap-1.5 font-medium">
+            <Files className="h-3.5 w-3.5 text-[#635BFF]" /> Active entities
           </div>
         </div>
 
         {/* Card 4: Largest File */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Largest File</span>
-          <span className="text-2xl font-black text-slate-850 block mt-2 truncate" title={formatBytes(summary.largestFile)}>
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 text-left transition-all duration-200 hover:shadow-md hover:border-zinc-300 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+          <span className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider block">Largest File</span>
+          <span className="text-2xl font-bold text-zinc-900 block mt-2 truncate" title={formatBytes(summary.largestFile)}>
             {formatBytes(summary.largestFile)}
           </span>
-          <div className="mt-2 flex items-center text-[9px] text-slate-455 gap-1 font-semibold">
-            <Database className="h-3 w-3 text-indigo-500" /> Max file size
+          <div className="mt-2.5 flex items-center text-[10px] text-zinc-550 gap-1.5 font-medium">
+            <Database className="h-3.5 w-3.5 text-[#635BFF]" /> Max file size
           </div>
         </div>
       </div>
 
       {/* Storage Insights Callouts */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-left">
-        <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-          <Sparkles className="h-4 w-4 text-indigo-500" /> Storage Insights
+      <div className="bg-white border border-zinc-200 rounded-xl p-5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles className="h-4 w-4 text-[#635BFF]" /> Storage Insights
         </h4>
-        <p className="text-xs text-slate-400 mt-0.5">Observations of your storage footprint and capacity velocity.</p>
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
           {insights.length === 0 ? (
-            <div className="text-slate-400 text-xs col-span-2">
+            <div className="text-zinc-400 text-xs col-span-2 py-4 text-center">
               Generate more file activity to compile storage insights.
             </div>
           ) : (
             insights.map((insight, idx) => (
-              <div key={idx} className="flex items-center gap-3 bg-slate-50 border border-slate-100 p-3 rounded-lg">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                <span className="text-xs text-slate-750 font-semibold">{insight}</span>
+              <div key={idx} className="flex items-center gap-2.5 bg-zinc-50 border border-zinc-150 p-3.5 rounded-lg shadow-2xs hover:bg-zinc-100/30 transition-colors">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#635BFF] shrink-0" />
+                <span className="text-xs text-zinc-700 font-semibold leading-normal">{insight}</span>
               </div>
             ))
           )}
@@ -399,31 +406,33 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
       </div>
 
       {/* Main Chart: Storage Growth Timeline (Cumulative Size) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm text-left">
+      <div className="bg-white border border-zinc-200 rounded-xl p-5 text-left shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
         <div>
-          <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-            <TrendingUp className="h-4 w-4 text-indigo-500" /> Storage Growth Timeline
+          <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="h-4 w-4 text-[#635BFF]" /> Storage Growth Timeline
           </h4>
-          <p className="text-xs text-slate-400 mt-0.5">Cumulative storage size trend of active files over time.</p>
         </div>
         
-        <div className="mt-6 h-64">
+        <div className="mt-4 h-64">
           {chartsData.growthTimeline.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-slate-400 text-xs">No active file timeline metrics.</div>
+            <div className="flex h-full items-center justify-center text-zinc-400 text-xs">No active file timeline metrics.</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartsData.growthTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={chartsData.growthTimeline} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSize" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#635BFF" stopOpacity={0.12}/>
+                    <stop offset="95%" stopColor="#635BFF" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" />
-                <XAxis dataKey="label" stroke="#94a3b8" fontSize={9} fontWeight={600} />
-                <YAxis stroke="#94a3b8" fontSize={9} fontWeight={600} unit=" MB" />
-                <Tooltip formatter={(val) => [`${val} MB`, "Total Storage"]} />
-                <Area type="monotone" dataKey="sizeMB" stroke="#6366f1" fillOpacity={1} fill="url(#colorSize)" strokeWidth={2} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
+                <XAxis dataKey="label" stroke="#a1a1aa" fontSize={9} fontWeight={600} />
+                <YAxis stroke="#a1a1aa" fontSize={9} fontWeight={600} unit=" MB" />
+                <Tooltip 
+                  contentStyle={{ fontSize: "11px", borderRadius: "8px", border: "1px solid #e4e4e7" }}
+                  formatter={(val) => [`${val} MB`, "Total Storage"]} 
+                />
+                <Area type="monotone" dataKey="sizeMB" stroke="#635BFF" fillOpacity={1} fill="url(#colorSize)" strokeWidth={1.5} dot={{ r: 1 }} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -434,28 +443,27 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">
         
         {/* Upload Activity Timeline */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 flex flex-col justify-between shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
           <div>
-            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              <Files className="h-4 w-4 text-indigo-500" /> Upload Activity Timeline
+            <h4 className="text-xs font-bold text-zinc-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Files className="h-4 w-4 text-[#635BFF]" /> Upload Activity Timeline
             </h4>
-            <p className="text-xs text-slate-400 mt-0.5">Daily upload frequency and size breakdown.</p>
           </div>
 
-          <div className="mt-6 h-60">
+          <div className="mt-4 h-60">
             {chartsData.uploadsTimeline.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-slate-400 text-xs">No upload logs found.</div>
+              <div className="flex h-full items-center justify-center text-zinc-400 text-xs">No upload logs found.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartsData.uploadsTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={9} fontWeight={600} />
-                  <YAxis yAxisId="left" stroke="#94a3b8" fontSize={9} fontWeight={600} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#94a3b8" fontSize={9} fontWeight={600} unit="M" />
-                  <Tooltip />
+                <BarChart data={chartsData.uploadsTimeline} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f4f4f5" vertical={false} />
+                  <XAxis dataKey="label" stroke="#a1a1aa" fontSize={9} fontWeight={600} />
+                  <YAxis yAxisId="left" stroke="#a1a1aa" fontSize={9} fontWeight={600} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#a1a1aa" fontSize={9} fontWeight={600} unit="M" />
+                  <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "6px" }} />
                   <Legend wrapperStyle={{ fontSize: 10, fontWeight: 600 }} />
-                  <Bar yAxisId="left" dataKey="count" name="Upload Count" fill="#6366f1" radius={[3, 3, 0, 0]} />
-                  <Bar yAxisId="right" dataKey="sizeMB" name="Size (MB)" fill="#10b981" radius={[3, 3, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="count" name="Upload Count" fill="#635BFF" radius={[3, 3, 0, 0]} barSize={10} />
+                  <Bar yAxisId="right" dataKey="sizeMB" name="Size (MB)" fill="#d4d4d8" radius={[3, 3, 0, 0]} barSize={10} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -463,17 +471,16 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
         </div>
 
         {/* File Type Distribution */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white border border-zinc-200 rounded-xl p-5 flex flex-col justify-between shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
           <div>
-            <h4 className="text-sm font-bold text-slate-850 flex items-center gap-1.5">
-              <PieIcon className="h-4 w-4 text-indigo-500" /> File Type Shares
+            <h4 className="text-xs font-bold text-zinc-855 uppercase tracking-wider flex items-center gap-1.5">
+              <PieIcon className="h-4 w-4 text-[#635BFF]" /> File Type Shares
             </h4>
-            <p className="text-xs text-slate-400 mt-0.5">Proportion of active categories by size.</p>
           </div>
 
-          <div className="h-48 mt-4">
+          <div className="h-44 mt-4">
             {filteredData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-slate-400 text-xs">No files uploaded in range.</div>
+              <div className="flex h-full items-center justify-center text-zinc-400 text-xs">No files uploaded in range.</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -482,24 +489,24 @@ export default function AnalyticsTab({ usage = [], loading, plan = "Free", onUpg
                     cx="50%"
                     cy="50%"
                     innerRadius={50}
-                    outerRadius={65}
+                    outerRadius={62}
                     paddingAngle={3}
                     dataKey="size"
                   >
                     {distribution.filter(d => d.size > 0).map((entry) => (
-                      <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || "#64748b"} />
+                      <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || "#e4e4e7"} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatBytes(value)} />
+                  <Tooltip contentStyle={{ fontSize: "11px", borderRadius: "6px" }} formatter={(value) => formatBytes(value)} />
                 </PieChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 text-[9px] font-bold text-slate-500 justify-center border-t border-slate-50 pt-3">
+          <div className="flex flex-wrap gap-2 text-[9px] font-bold text-zinc-550 justify-center border-t border-zinc-150 pt-3">
             {distribution.map((d) => (
               <span key={d.name} className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[d.name] }} />
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[d.name] }} />
                 {d.name} ({d.percentage.toFixed(0)}%)
               </span>
             ))}

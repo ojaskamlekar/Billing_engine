@@ -52,54 +52,48 @@ const getActionBadge = (action) => {
   
   if (norm.includes("login") && !norm.includes("failed")) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-100 shadow-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-100">
         Login
       </span>
     );
   }
   if (norm.includes("upload")) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-100 shadow-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+      <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100">
         Upload
       </span>
     );
   }
   if (norm.includes("delete")) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 border border-red-100 shadow-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+      <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-100">
         Delete
       </span>
     );
   }
   if (norm.includes("invoice")) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 border border-purple-100 shadow-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+      <span className="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 border border-purple-100">
         Invoice
       </span>
     );
   }
   if (norm.includes("subscription")) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 border border-amber-100 shadow-xs">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-100">
         Subscription
       </span>
     );
   }
   if (norm.includes("failed")) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700 border border-rose-250 shadow-sm animate-pulse">
-        <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+      <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 border border-red-150">
         Failed Login
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 border border-slate-200">
+    <span className="inline-flex items-center gap-1 rounded bg-zinc-50 px-2 py-0.5 text-[10px] font-medium text-zinc-700 border border-zinc-200">
       {action}
     </span>
   );
@@ -176,19 +170,19 @@ export default function AuditLogsTab() {
   const isFilterActive = search !== "" || action !== "All" || startDate !== "" || endDate !== "" || sortBy !== "Newest";
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="space-y-6">
       
       {/* Tab card */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm text-left">
+      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white text-left">
         
         {/* Header */}
-        <div className="border-b border-slate-200 px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="border-b border-zinc-200 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+              <ShieldAlert className="h-4.5 w-4.5 text-[#635BFF]" />
               Enterprise Audit Logs
             </h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-0.5">
               Detailed history of all major security actions, resource modifications, and user access records.
             </p>
           </div>
@@ -197,39 +191,39 @@ export default function AuditLogsTab() {
             type="button"
             onClick={fetchLogs}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer select-none disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 transition cursor-pointer select-none disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 text-slate-500 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-zinc-500 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
 
         {/* Filter Toolbar */}
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+        <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/20">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
             
             {/* Search Bar */}
             <div className="lg:col-span-2">
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Search Logs</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">Search Logs</label>
               <div className="relative">
                 <input
                   type="text"
                   placeholder="Search description, resource..."
                   value={tempSearch}
                   onChange={(e) => setTempSearch(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-4 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition"
+                  className="w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-3 py-2 text-xs text-zinc-805 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF] outline-none transition"
                 />
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
               </div>
             </div>
 
             {/* Action Filter */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Action Type</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">Action Type</label>
               <select
                 value={action}
                 onChange={(e) => { setAction(e.target.value); setPage(1); }}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-850 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF] outline-none transition cursor-pointer"
               >
                 <option value="All">All Actions</option>
                 <option value="User Registration">User Registration</option>
@@ -245,33 +239,33 @@ export default function AuditLogsTab() {
 
             {/* From Date */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">From Date</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">From Date</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF] outline-none transition cursor-pointer"
               />
             </div>
 
             {/* To Date */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">To Date</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">To Date</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-800 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF] outline-none transition cursor-pointer"
               />
             </div>
 
             {/* Sort Order */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-left">Sort By</label>
+              <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-1.5 text-left">Sort By</label>
               <select
                 value={sortBy}
                 onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 outline-none transition cursor-pointer"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-2 text-xs text-zinc-850 focus:border-[#635BFF] focus:ring-1 focus:ring-[#635BFF] outline-none transition cursor-pointer"
               >
                 <option value="Newest">Newest First</option>
                 <option value="Oldest">Oldest First</option>
@@ -286,7 +280,7 @@ export default function AuditLogsTab() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-zinc-950 transition cursor-pointer"
               >
                 Reset Filters
               </button>
@@ -296,70 +290,70 @@ export default function AuditLogsTab() {
 
         {/* Table Content */}
         {loading ? (
-          <div className="py-24 text-center text-sm text-slate-500 animate-pulse flex flex-col items-center justify-center">
-            <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin mb-3" />
+          <div className="py-20 text-center text-xs text-zinc-500 animate-pulse flex flex-col items-center justify-center">
+            <RefreshCw className="h-6 w-6 text-[#635BFF] animate-spin mb-3" />
             Loading security audit logs…
           </div>
         ) : error ? (
-          <div className="py-16 text-center text-sm text-red-500 bg-red-50/50 border-b border-slate-150">
+          <div className="py-16 text-center text-xs text-red-500 bg-red-50/50 border-b border-zinc-200">
             {error}
           </div>
         ) : logs.length === 0 ? (
-          <div className="py-20 text-center text-slate-500 bg-white flex flex-col items-center justify-center animate-in fade-in duration-300">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 mb-4 shadow-inner">
-              <Info className="h-8 w-8 text-slate-350" />
+          <div className="py-16 text-center text-zinc-550 bg-white flex flex-col items-center justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-50 border border-zinc-200 text-zinc-400 mb-4 animate-pulse">
+              <Info className="h-8 w-8 text-zinc-400" />
             </div>
-            <p className="text-base font-semibold text-slate-900">No logs found</p>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm">
+            <p className="text-sm font-bold text-zinc-900">No logs found</p>
+            <p className="text-xs text-zinc-500 mt-1 max-w-xs">
               There are no audit events matching your current search parameters.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-zinc-200">
+              <thead className="bg-zinc-50/50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">Time</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">Action</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">Resource</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">Description</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">IP Address</th>
-                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 text-left">Status</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-left">Time</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-left">Action</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-left">Resource</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-left">Description</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-left">IP Address</th>
+                  <th scope="col" className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-left">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-zinc-100 bg-white">
                 {logs.map((log) => {
                   const isFailed = String(log.action || "").toLowerCase().includes("failed");
                   return (
                     <tr
                       key={log.id}
-                      className="transition-all duration-200 ease-out hover:bg-slate-50/70 hover:shadow-xs border-l-2 border-transparent hover:border-indigo-500"
+                      className="transition-colors hover:bg-zinc-50/50"
                     >
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 text-left">
-                        <div className="font-semibold text-slate-800">{getRelativeTime(log.created_at)}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">{formatAbsoluteDate(log.created_at)}</div>
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-zinc-600 text-left">
+                        <div className="font-semibold text-zinc-800">{getRelativeTime(log.created_at)}</div>
+                        <div className="text-[10px] text-zinc-400 mt-0.5">{formatAbsoluteDate(log.created_at)}</div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-left">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-left">
                         {getActionBadge(log.action)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-left font-medium text-slate-800 max-w-xs truncate" title={log.resource_name}>
-                        <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-0.5">{log.resource_type || "General"}</div>
-                        <div className="truncate font-bold text-slate-700">{log.resource_name || "—"}</div>
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-left font-medium text-zinc-800 max-w-xs truncate" title={log.resource_name}>
+                        <div className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider mb-0.5">{log.resource_type || "General"}</div>
+                        <div className="truncate font-bold text-zinc-700">{log.resource_name || "—"}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 text-left max-w-sm truncate" title={log.description}>
+                      <td className="px-6 py-3.5 text-xs text-zinc-650 text-left max-w-sm truncate" title={log.description}>
                         {log.description || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-650 text-left">
-                        <div className="font-mono text-slate-700">{log.ip_address || "Local"}</div>
-                        <div className="text-[10px] text-slate-400 max-w-[120px] truncate" title={log.user_agent}>{log.user_agent || "N/A"}</div>
+                      <td className="whitespace-nowrap px-6 py-3.5 text-xs text-zinc-650 text-left">
+                        <div className="font-mono text-zinc-705">{log.ip_address || "Local"}</div>
+                        <div className="text-[9px] text-zinc-400 max-w-[120px] truncate" title={log.user_agent}>{log.user_agent || "N/A"}</div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-left">
+                      <td className="whitespace-nowrap px-6 py-3.5 text-left">
                         {isFailed ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 border border-red-200 shadow-xs">
+                          <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">
                             Failed
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-xs">
+                          <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
                             Success
                           </span>
                         )}
@@ -374,11 +368,11 @@ export default function AuditLogsTab() {
 
         {/* Pagination Footer */}
         {logs.length > 0 && (
-          <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/30">
-            <div className="text-xs text-slate-500">
-              Showing <span className="font-semibold text-slate-800">{(page - 1) * limit + 1}</span> to{" "}
-              <span className="font-semibold text-slate-800">{Math.min(page * limit, totalItems)}</span> of{" "}
-              <span className="font-semibold text-slate-800">{totalItems}</span> events
+          <div className="px-5 py-4 border-t border-zinc-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-50/10">
+            <div className="text-[11px] text-zinc-500">
+              Showing <span className="font-semibold text-zinc-800">{(page - 1) * limit + 1}</span> to{" "}
+              <span className="font-semibold text-zinc-800">{Math.min(page * limit, totalItems)}</span> of{" "}
+              <span className="font-semibold text-zinc-800">{totalItems}</span> events
               {isFilterActive && " (filtered)"}
             </div>
             
@@ -387,24 +381,24 @@ export default function AuditLogsTab() {
                 type="button"
                 disabled={page === 1}
                 onClick={() => setPage(p => Math.max(1, p - 1))}
-                className={`rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer select-none ${
-                  page === 1 ? "opacity-50 cursor-not-allowed bg-slate-50" : "hover:bg-slate-50 hover:text-slate-950"
+                className={`rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition cursor-pointer select-none ${
+                  page === 1 ? "opacity-50 cursor-not-allowed bg-zinc-50" : "hover:bg-zinc-50 hover:text-zinc-955"
                 }`}
               >
                 Previous
               </button>
               
-              <span className="text-xs text-slate-500 font-medium px-2">
-                Page <span className="font-semibold text-slate-800">{page}</span> of{" "}
-                <span className="font-semibold text-slate-800">{totalPages}</span>
+              <span className="text-xs text-zinc-500 font-medium px-1">
+                Page <span className="font-semibold text-zinc-800">{page}</span> of{" "}
+                <span className="font-semibold text-zinc-800">{totalPages}</span>
               </span>
 
               <button
                 type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                className={`rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition cursor-pointer select-none ${
-                  page === totalPages ? "opacity-50 cursor-not-allowed bg-slate-50" : "hover:bg-slate-50 hover:text-slate-955"
+                className={`rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition cursor-pointer select-none ${
+                  page === totalPages ? "opacity-50 cursor-not-allowed bg-zinc-50" : "hover:bg-zinc-50 hover:text-zinc-955"
                 }`}
               >
                 Next

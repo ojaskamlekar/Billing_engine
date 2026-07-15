@@ -26,13 +26,13 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
   const getBadgeColor = (plan) => {
     switch (plan?.toLowerCase()) {
       case "free":
-        return "bg-emerald-50 text-emerald-700 border-emerald-200/60";
+        return "bg-zinc-100 text-zinc-700 border-zinc-200";
       case "pro":
-        return "bg-blue-50 text-blue-700 border-blue-200/60";
+        return "bg-purple-50 text-purple-700 border-purple-200";
       case "enterprise":
-        return "bg-purple-50 text-purple-700 border-purple-200/60";
+        return "bg-indigo-50 text-indigo-700 border-indigo-200";
       default:
-        return "bg-slate-50 text-slate-700 border-slate-200/60";
+        return "bg-zinc-50 text-zinc-700 border-zinc-200";
     }
   };
 
@@ -152,7 +152,7 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
             <span>Failed to download invoice PDF.</span>
             <button
               onClick={() => handleDownload(true)}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-2.5 py-1 rounded transition cursor-pointer"
+              className="bg-zinc-800 hover:bg-zinc-900 text-white font-semibold text-xs px-2.5 py-1 rounded transition cursor-pointer"
             >
               Retry
             </button>
@@ -167,29 +167,28 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md text-left overflow-hidden">
+      <div className="rounded-xl border border-zinc-200 bg-white text-left overflow-hidden">
         
-        {/* Header Block resembling SaaS invoice templates */}
-        <div className="bg-slate-50 border-b border-slate-100 p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="bg-zinc-50 border-b border-zinc-200 p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Invoice Statement</span>
-            <h2 className="text-xl font-bold text-slate-900 mt-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#635BFF]">Invoice Statement</span>
+            <h2 className="text-lg font-bold text-zinc-900 mt-0.5">
               {loading ? "INV-2026-XXXX" : invoice?.invoice_id}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">Generated on {loading ? "—" : invoice?.generated_at}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">Generated on {loading ? "—" : invoice?.generated_at}</p>
           </div>
            <button
             onClick={() => handleDownload()}
             disabled={loading || error || !invoice || downloading || completed}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold text-white transition cursor-pointer ${
               completed
                 ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-indigo-600 hover:bg-indigo-500"
+                : "bg-[#635BFF] hover:bg-[#5249f0]"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {downloading ? (
               <>
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
@@ -197,14 +196,14 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
               </>
             ) : completed ? (
               <>
-                <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                ✓ Download Complete
+                ✓ Downloaded
               </>
             ) : (
               <>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Download PDF
@@ -213,19 +212,18 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
           </button>
         </div>
 
-        {/* Invoice details body */}
-        <div className="p-6">
+        <div className="p-5">
           {loading ? (
-            <div className="animate-pulse space-y-6">
-              <div className="h-12 w-48 bg-slate-100 rounded" />
+            <div className="animate-pulse space-y-4">
+              <div className="h-10 w-44 bg-zinc-100 rounded" />
               <div className="grid grid-cols-2 gap-4">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="h-12 bg-slate-100 rounded" />
+                  <div key={i} className="h-10 bg-zinc-100 rounded" />
                 ))}
               </div>
             </div>
           ) : error ? (
-            <div className="rounded-lg border border-red-100 bg-red-50 p-4 text-xs text-red-600">
+            <div className="rounded-lg border border-red-100 bg-red-50/50 p-4 text-xs text-red-600">
               <p className="font-semibold">Failed to load invoice details</p>
               <button
                 onClick={onRetry}
@@ -235,57 +233,154 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Prominent Amount Due banner */}
-              <div className="bg-indigo-50/40 rounded-xl p-5 border border-indigo-100/50 flex flex-col justify-center items-center text-center">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount Due</span>
-                <span className="text-4xl font-extrabold text-indigo-600 mt-1">₹{invoice?.total_amount}</span>
-                <span className="text-xs text-slate-400 mt-1">Auto-deducted from balance or payment method</span>
+            <div className="space-y-5">
+              <div className="border border-zinc-200 rounded-xl p-4 bg-zinc-50/10">
+                <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Customer Details</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-zinc-400 font-medium">Customer Name</p>
+                    <p className="font-semibold text-zinc-800 mt-0.5">{invoice?.customer_name || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-400 font-medium">Customer Email</p>
+                    <p className="font-semibold text-zinc-800 mt-0.5">{invoice?.customer_email || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-400 font-medium">Billing Period</p>
+                    <p className="font-semibold text-zinc-800 mt-0.5">{invoice?.billing_period}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-400 font-medium">Billing Model</p>
+                    <p className="font-semibold text-zinc-800 mt-0.5">Usage-Based (Pay As You Go)</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-400 font-medium">Current Plan</p>
+                    <p className="mt-0.5">
+                      <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold border ${getBadgeColor(invoice?.plan)}`}>
+                        {invoice?.plan}
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-400 font-medium">Generated Date</p>
+                    <p className="font-semibold text-zinc-800 mt-0.5">{invoice?.generated_at}</p>
+                  </div>
+                </div>
               </div>
 
-              {/* Data Grid list */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                <div className="border border-slate-100 rounded-lg p-4 flex flex-col justify-between">
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Billing Period</span>
-                  <span className="text-sm font-semibold text-slate-800 mt-1">{invoice?.billing_period}</span>
+              <div>
+                <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Usage Summary</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-zinc-200 rounded-xl p-3.5 bg-white transition-colors hover:border-zinc-300">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Storage Used</span>
+                    <p className="text-lg font-bold text-zinc-800 mt-1">{formatBytes(invoice?.total_bytes)}</p>
+                  </div>
+                  <div className="border border-zinc-200 rounded-xl p-3.5 bg-white transition-colors hover:border-zinc-300">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">API Requests</span>
+                    <p className="text-lg font-bold text-zinc-800 mt-1">{invoice?.api_requests_count?.toLocaleString() || 0}</p>
+                  </div>
+                  <div className="border border-zinc-200 rounded-xl p-3.5 bg-white transition-colors hover:border-zinc-300">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Bandwidth Used</span>
+                    <p className="text-lg font-bold text-zinc-800 mt-1">{formatBytes(invoice?.bandwidth_bytes)}</p>
+                  </div>
+                  <div className="border border-zinc-200 rounded-xl p-3.5 bg-white transition-colors hover:border-zinc-300">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Total Files Stored</span>
+                    <p className="text-lg font-bold text-zinc-800 mt-1">{invoice?.total_files?.toLocaleString() || 0} files</p>
+                  </div>
                 </div>
-
-                <div className="border border-slate-100 rounded-lg p-4 flex flex-col justify-between">
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Customer Plan</span>
-                  <span className="mt-1">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${getBadgeColor(invoice?.plan)}`}>
-                      {invoice?.plan}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="border border-slate-100 rounded-lg p-4 flex flex-col justify-between">
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Storage Used</span>
-                  <span className="text-sm font-semibold text-slate-800 mt-1">{invoice?.storage_used_mb} MB</span>
-                </div>
-
-                <div className="border border-slate-100 rounded-lg p-4 flex flex-col justify-between">
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Files</span>
-                  <span className="text-sm font-semibold text-slate-800 mt-1">{invoice?.total_files} files</span>
-                </div>
-
-                <div className="border border-slate-100 rounded-lg p-4 flex flex-col justify-between">
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Rate per MB</span>
-                  <span className="text-sm font-semibold text-slate-800 mt-1">₹{invoice?.rate_per_mb} / MB</span>
-                </div>
-
-                <div className="border border-slate-100 rounded-lg p-4 flex flex-col justify-between">
-                  <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Estimated Subtotal</span>
-                  <span className="text-sm font-semibold text-slate-800 mt-1">₹{invoice?.total_amount}</span>
-                </div>
-
               </div>
-              
-              <div className="border-t border-slate-100 pt-5 text-[11px] text-slate-400 leading-relaxed">
-                <p>
-                  This invoice is automatically generated on-the-fly based on metered log records of files uploaded to object buckets. 
-                  Charges are subject to plan rates defined in the billing engine settings.
+
+              <div>
+                <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Billing Breakdown</h3>
+                <div className="border border-zinc-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold">
+                        <th className="p-3">Charge Component</th>
+                        <th className="p-3">Calculations</th>
+                        <th className="p-3 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 text-zinc-700">
+                      <tr>
+                        <td className="p-3 font-medium">Storage Charges</td>
+                        <td className="p-3 font-mono text-[10px] text-zinc-500">
+                          {invoice?.storage_used_mb?.toFixed(2)} MB × ₹{invoice?.pricing_config?.storage_price_per_mb?.toFixed(3)} / MB
+                        </td>
+                        <td className="p-3 text-right font-semibold text-zinc-800">₹{invoice?.storage_cost?.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td className="p-3 font-medium">API Request Charges</td>
+                        <td className="p-3 font-mono text-[10px] text-zinc-500">
+                          {invoice?.api_requests_count?.toLocaleString()} Requests × ₹{invoice?.pricing_config?.api_price_per_request?.toFixed(4)} / Request
+                        </td>
+                        <td className="p-3 text-right font-semibold text-zinc-800">₹{invoice?.api_request_cost?.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td className="p-3 font-medium">Bandwidth Charges</td>
+                        <td className="p-3 font-mono text-[10px] text-zinc-500">
+                          {((invoice?.bandwidth_bytes || 0) / (1024 * 1024 * 1024))?.toFixed(4)} GB × ₹{invoice?.pricing_config?.bandwidth_price_per_gb?.toFixed(2)} / GB
+                        </td>
+                        <td className="p-3 text-right font-semibold text-zinc-800">₹{invoice?.bandwidth_cost?.toFixed(2)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <div className="w-full sm:w-60 border border-zinc-200 rounded-xl p-4 bg-zinc-50/10 space-y-2 text-xs">
+                  <div className="flex justify-between text-zinc-500">
+                    <span>Subtotal</span>
+                    <span className="font-semibold text-zinc-800">₹{invoice?.subtotal?.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-500">
+                    <span>GST (0%)</span>
+                    <span className="font-semibold text-zinc-800">₹0.00</span>
+                  </div>
+                  <div className="border-t border-zinc-200 pt-2 flex justify-between items-center text-xs">
+                    <span className="font-bold text-zinc-900">Grand Total</span>
+                    <span className="text-base font-bold text-[#635BFF]">₹{invoice?.total_amount?.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {invoice?.billing_insights && invoice.billing_insights.length > 0 && (
+                <div>
+                  <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Billing Insights</h3>
+                  <div className="border border-amber-200 bg-amber-50/20 rounded-xl p-3.5 space-y-1.5">
+                    {invoice.billing_insights.map((insight, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5 text-xs text-amber-900 font-medium">
+                        <span className="text-amber-500 mt-0.5">•</span>
+                        <span>{insight}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-2.5">Pricing Reference</h3>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="border border-zinc-200 rounded-xl p-3 bg-zinc-50/10">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Storage</p>
+                    <p className="text-xs font-semibold text-zinc-800 mt-0.5">₹{invoice?.pricing_config?.storage_price_per_mb?.toFixed(2)} / MB</p>
+                  </div>
+                  <div className="border border-zinc-200 rounded-xl p-3 bg-zinc-50/10">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">API Requests</p>
+                    <p className="text-xs font-semibold text-zinc-800 mt-0.5">₹{invoice?.pricing_config?.api_price_per_request?.toFixed(3)} / req</p>
+                  </div>
+                  <div className="border border-zinc-200 rounded-xl p-3 bg-zinc-50/10">
+                    <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Bandwidth</p>
+                    <p className="text-xs font-semibold text-zinc-800 mt-0.5">₹{invoice?.pricing_config?.bandwidth_price_per_gb?.toFixed(2)} / GB</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-200 pt-4 text-center space-y-0.5">
+                <p className="text-[11px] font-semibold text-zinc-500 italic">Thank you for choosing WeCloud.</p>
+                <p className="text-[9px] text-zinc-400">
+                  This invoice was generated automatically by the WeCloud Billing Engine.
                 </p>
               </div>
             </div>
@@ -294,51 +389,48 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
 
       </div>
 
-      {/* Real-time Download Progress Dialog Overlay */}
       {downloadProgress && (
-        <div className="fixed bottom-6 left-6 z-50 flex w-full max-w-sm flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl ring-1 ring-black/5 animate-in slide-in-from-left-5 duration-300 text-left">
-          <div className="flex items-start justify-between mb-3">
+        <div className="fixed bottom-6 left-6 z-50 flex w-full max-w-sm flex-col rounded-xl border border-zinc-200 bg-white p-4 shadow-sm text-left">
+          <div className="flex items-start justify-between mb-2">
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm font-bold text-slate-800 truncate">
+              <h4 className="text-xs font-bold text-zinc-800 truncate">
                 {downloadProgress.status === "complete" ? "✓ Download Complete" : "Downloading invoice..."}
               </h4>
-              <p className="text-xs text-slate-400 truncate mt-0.5 font-mono">{downloadProgress.filename}</p>
+              <p className="text-[10px] text-zinc-400 truncate font-mono">{downloadProgress.filename}</p>
             </div>
             {downloadProgress.status === "downloading" && (
-              <span className="text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 rounded px-1.5 py-0.5 animate-pulse">
+              <span className="text-[10px] font-semibold text-[#635BFF] bg-purple-50 border border-purple-100 rounded px-1.5 py-0.5 animate-pulse">
                 Active
               </span>
             )}
           </div>
 
-          {/* Progress Bar Container */}
-          <div className="space-y-2">
-            <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden relative">
+          <div className="space-y-1.5">
+            <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden relative">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  downloadProgress.status === "complete" ? "bg-emerald-500" : "bg-purple-600"
+                  downloadProgress.status === "complete" ? "bg-emerald-500" : "bg-[#635BFF]"
                 }`}
                 style={{ width: `${downloadProgress.percent}%` }}
               />
             </div>
-            <div className="flex justify-between items-center text-xs text-slate-500 font-semibold">
+            <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold">
               <span>{downloadProgress.percent.toFixed(0)}%</span>
               <span>{formatBytes(downloadProgress.loaded)} / {formatBytes(downloadProgress.total)}</span>
             </div>
           </div>
 
-          {/* Transfer stats: Speed & ETA */}
           {downloadProgress.status === "downloading" && (
-            <div className="mt-3.5 pt-3 border-t border-slate-100 flex justify-between text-[11px] text-slate-400 font-semibold">
+            <div className="mt-2.5 pt-2 border-t border-zinc-200 flex justify-between text-[10px] text-zinc-400 font-semibold">
               <div className="flex items-center gap-1">
                 <span>Speed:</span>
-                <span className="text-slate-600 font-bold font-mono">
+                <span className="text-zinc-700 font-bold font-mono">
                   {downloadProgress.speed > 0 ? `${(downloadProgress.speed / (1024 * 1024)).toFixed(1)} MB/s` : "Calculating..."}
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <span>ETA:</span>
-                <span className="text-slate-600 font-bold">
+                <span className="text-zinc-700 font-bold">
                   {downloadProgress.eta !== null ? `${downloadProgress.eta}s remaining` : "Calculating..."}
                 </span>
               </div>
@@ -347,23 +439,22 @@ export default function InvoiceTab({ invoice, loading, error, onRetry, plan = "F
         </div>
       )}
 
-      {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl ring-1 ring-black/5 animate-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-center gap-3 w-full">
+        <div className="fixed bottom-6 right-6 z-50 flex w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-3 shadow-sm">
+          <div className="flex items-center gap-2.5 w-full">
             {toast.type === "success" ? (
-              <svg className="h-5 w-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-4.5 w-4.5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             ) : (
-              <svg className="h-5 w-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-4.5 w-4.5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             )}
-            <div className="text-sm font-medium text-slate-800 flex-1">{toast.message}</div>
+            <div className="text-xs font-semibold text-zinc-800 flex-1">{toast.message}</div>
             <button
               onClick={() => setToast(null)}
-              className="ml-auto pl-3 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              className="ml-auto pl-2 text-zinc-400 hover:text-zinc-600 transition cursor-pointer"
               aria-label="Close toast"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

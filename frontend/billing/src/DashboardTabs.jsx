@@ -76,9 +76,9 @@ export default function DashboardTabs({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <div className="border-b border-slate-200 bg-white shadow-sm px-4">
+    <div className="border-b border-zinc-200/80 bg-white px-4 py-2.5 sticky top-[73px] z-30">
       <div className="mx-auto max-w-7xl">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="flex space-x-1.5 overflow-x-auto py-0.5" aria-label="Tabs">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -86,14 +86,14 @@ export default function DashboardTabs({ activeTab, setActiveTab }) {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`
-                  group flex items-center border-b-2 py-4 px-1 text-sm font-medium transition-all duration-150 cursor-pointer
+                  group flex items-center rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap select-none border
                   ${isActive
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
+                    ? "bg-[#635BFF]/8 text-[#635BFF] border-[#635BFF]/20 font-bold"
+                    : "border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50"
                   }
                 `}
               >
-                <span className={`transition-colors duration-150 ${isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-500"}`}>
+                <span className={`transition-colors duration-150 ${isActive ? "text-[#635BFF]" : "text-zinc-400 group-hover:text-zinc-500"}`}>
                   {tab.icon}
                 </span>
                 {tab.label}

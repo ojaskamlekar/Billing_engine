@@ -260,9 +260,22 @@ def on_startup():
     except Exception as e:
         print(f"Error backfilling metadata columns: {e}")
 
+def cleanup_expired_registrations(db: Session):
+    """Dynamically remove expired pending registrations."""
+    try:
+        db.execute(
+            text("DELETE FROM pending_registrations WHERE otp_expiry < :now"),
+            {"now": datetime.utcnow()}
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error cleaning up expired registrations: {e}")
+
+
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(payload: UserCreate, request: Request, db: Session = Depends(get_db)):
-    """Register a new user in an unverified state, generating and sending an OTP."""
+    """Register a new user in a pending state, storing details in pending_registrations."""
     ip = request.client.host if request.client else "unknown"
     check_rate_limit(
         key=f"rate:register:{ip}",
@@ -272,13 +285,22 @@ def register_user(payload: UserCreate, request: Request, db: Session = Depends(g
         endpoint="/register",
         user_email=payload.email
     )
-    # Check email uniqueness
+    
+    # Run dynamic cleanup of expired registrations
+    cleanup_expired_registrations(db)
+
+    # Check if a verified user already exists
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="A user with this email already exists."
-        )
+        if getattr(existing, "email_verified", False):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email already exists."
+            )
+        else:
+            # Legacy unverified user. Clean up to allow registration.
+            db.delete(existing)
+            db.commit()
 
     # Hash password — plain text is never stored
     hashed_password = hash_password(payload.password)
@@ -294,35 +316,43 @@ def register_user(payload: UserCreate, request: Request, db: Session = Depends(g
         print(f"  VERIFICATION OTP FOR {payload.email} IS: {otp}")
         print(f"=======================================================\n")
 
-    # Save user to DB in unverified state
-    user = User(
-        name=payload.name,
-        email=payload.email,
-        password_hash=hashed_password,
-        email_verified=False,
-        otp_hash=hash_password(otp),
-        otp_expiry=datetime.utcnow() + timedelta(minutes=10),
-        otp_attempts=0,
-        last_otp_sent=datetime.utcnow()
-    )
-    db.add(user)
+    # Store registration temporarily
+    from models import PendingRegistration
+    pending = db.query(PendingRegistration).filter(PendingRegistration.email == payload.email).first()
+    if pending:
+        # Prevent duplicates: update existing record
+        pending.name = payload.name
+        pending.password_hash = hashed_password
+        pending.otp = hash_password(otp)
+        pending.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+        pending.created_at = datetime.utcnow()
+    else:
+        pending = PendingRegistration(
+            name=payload.name,
+            email=payload.email,
+            password_hash=hashed_password,
+            otp=hash_password(otp),
+            otp_expiry=datetime.utcnow() + timedelta(minutes=10)
+        )
+        db.add(pending)
+        
     db.commit()
-    db.refresh(user)
 
-    # Log registration action
+    # Log registration action (no actual user in User table yet, log with details)
     log_audit_event(
-        user=user,
-        action="User Registration",
+        user=None,
+        action="User Registration (Pending)",
         resource_type="User",
-        resource_name=user.email,
-        description=f"User registered in unverified state: {user.email}",
+        resource_name=payload.email,
+        description=f"User registration initialized in pending state: {payload.email}",
         request=request
     )
 
     return {
         "message": "Verification code sent successfully.",
-        "email": user.email
+        "email": payload.email
     }
+
 
 
 @app.post("/login", response_model=TokenResponse)
@@ -392,7 +422,7 @@ def login_user(payload: LoginRequest, request: Request, db: Session = Depends(ge
 
 @app.post("/verify-email")
 def verify_email(payload: VerifyEmailRequest, request: Request, db: Session = Depends(get_db)):
-    """Verify unverified user's email using OTP."""
+    """Verify unverified user's email using OTP and create account in users table."""
     check_rate_limit(
         key=f"rate:otp:{payload.email}",
         limit=10,
@@ -401,69 +431,86 @@ def verify_email(payload: VerifyEmailRequest, request: Request, db: Session = De
         endpoint="/verify-email",
         user_email=payload.email
     )
+    
+    # Run dynamic cleanup of expired registrations
+    cleanup_expired_registrations(db)
+
+    # If already verified in User table, return success
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
-        )
+    if user:
+        if getattr(user, "email_verified", False):
+            return {"message": "Email is already verified."}
+        else:
+            # Clean up unverified legacy user
+            db.delete(user)
+            db.commit()
 
-    if user.email_verified:
-        return {"message": "Email is already verified."}
-
-    if not user.otp_hash or not user.otp_expiry:
+    # Find pending registration
+    from models import PendingRegistration
+    pending = db.query(PendingRegistration).filter(PendingRegistration.email == payload.email).first()
+    if not pending:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No verification code has been requested."
+            detail="No verification code has been requested or it has expired."
         )
 
     # Check if OTP has expired (10 minutes lifetime)
-    if datetime.utcnow() > user.otp_expiry:
+    if datetime.utcnow() > pending.otp_expiry:
+        # Delete the expired pending registration
+        db.delete(pending)
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code has expired. Please request a new one."
         )
 
     # Verify OTP
-    if not verify_password(payload.otp, user.otp_hash):
-        user.otp_attempts += 1
-        db.add(user)
+    if not verify_password(payload.otp, pending.otp):
+        pending.otp_attempts += 1
         db.commit()
 
-        if user.otp_attempts >= 5:
+        if pending.otp_attempts >= 5:
             # Generate and send a new OTP after 5 failures
             otp = "".join(secrets.choice("0123456789") for _ in range(6))
-            user.otp_hash = hash_password(otp)
-            user.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
-            user.otp_attempts = 0
-            user.last_otp_sent = datetime.utcnow()
-            db.add(user)
+            pending.otp = hash_password(otp)
+            pending.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+            pending.otp_attempts = 0
             db.commit()
 
             # Send OTP email
-            success = send_otp_email(user.email, user.name, otp)
+            success = send_otp_email(pending.email, pending.name, otp)
             if not success:
                 print(f"\n=======================================================")
                 print(f"  [DEVELOPMENT ONLY] BREVO EMAIL DELIVERY FAILED.")
-                print(f"  NEW VERIFICATION OTP FOR {user.email} IS: {otp}")
+                print(f"  NEW VERIFICATION OTP FOR {pending.email} IS: {otp}")
                 print(f"=======================================================\n")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Maximum verification attempts exceeded. A new verification code has been sent to your email."
             )
         else:
-            remaining = 5 - user.otp_attempts
+            remaining = 5 - pending.otp_attempts
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Incorrect verification code. {remaining} attempts remaining."
             )
 
-    # Success! Clear OTP fields and verify
-    user.email_verified = True
-    user.otp_hash = None
-    user.otp_expiry = None
-    user.otp_attempts = 0
+    # Success! Create actual user in users table
+    user = User(
+        name=pending.name,
+        email=pending.email,
+        password_hash=pending.password_hash,
+        email_verified=True,
+        otp_hash=None,
+        otp_expiry=None,
+        otp_attempts=0
+    )
     db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    # Delete the temporary registration
+    db.delete(pending)
     db.commit()
 
     # Log verify action in audit log
@@ -473,7 +520,7 @@ def verify_email(payload: VerifyEmailRequest, request: Request, db: Session = De
         resource_type="User Profile",
         resource_name=user.email,
         description=f"User {user.email} successfully verified their email.",
-        request=None
+        request=request
     )
 
     return {"message": "Email verified successfully. You can now log in."}
@@ -482,15 +529,27 @@ def verify_email(payload: VerifyEmailRequest, request: Request, db: Session = De
 @app.post("/resend-otp")
 def resend_otp(payload: ResendOTPRequest, request: Request, db: Session = Depends(get_db)):
     """Resend a new OTP if within limits and cooldown."""
+    # Check if they are verified in users
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user:
+    if user:
+        if getattr(user, "email_verified", False):
+            return {"message": "Email is already verified."}
+        else:
+            # Clean up unverified legacy user
+            db.delete(user)
+            db.commit()
+
+    # Run dynamic cleanup of expired registrations
+    cleanup_expired_registrations(db)
+
+    # Check if pending registration exists
+    from models import PendingRegistration
+    pending = db.query(PendingRegistration).filter(PendingRegistration.email == payload.email).first()
+    if not pending:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
-
-    if user.email_verified:
-        return {"message": "Email is already verified."}
 
     # Dual Rate limiting checks
     check_rate_limit(
@@ -514,19 +573,17 @@ def resend_otp(payload: ResendOTPRequest, request: Request, db: Session = Depend
 
     # Generate and save new OTP
     otp = "".join(secrets.choice("0123456789") for _ in range(6))
-    user.otp_hash = hash_password(otp)
-    user.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
-    user.otp_attempts = 0
-    user.last_otp_sent = datetime.utcnow()
-    db.add(user)
+    pending.otp = hash_password(otp)
+    pending.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+    pending.otp_attempts = 0
     db.commit()
 
     # Send OTP email
-    success = send_otp_email(user.email, user.name, otp)
+    success = send_otp_email(pending.email, pending.name, otp)
     if not success:
         print(f"\n=======================================================")
         print(f"  [DEVELOPMENT ONLY] BREVO EMAIL DELIVERY FAILED.")
-        print(f"  RESENT VERIFICATION OTP FOR {user.email} IS: {otp}")
+        print(f"  RESENT VERIFICATION OTP FOR {pending.email} IS: {otp}")
         print(f"=======================================================\n")
 
     return {"message": "Verification code sent successfully."}
@@ -826,17 +883,32 @@ def get_summary(current_user: User = Depends(get_current_user)):
         )
         total_size = int(result.scalar() or 0)
 
-    rates = {
-        "Free": 0.0,
-        "Pro": 2.0,
-        "Enterprise": 1.5
-    }
-    rate = rates.get(current_user.plan, 2.0)
-    total_cost = (total_size / (1024 * 1024)) * rate
+        result_api = conn.execute(
+            text("SELECT COUNT(*) FROM api_request_logs WHERE user_id = :user_id"),
+            {"user_id": current_user.id}
+        )
+        api_requests_count = result_api.scalar() or 0
+
+        result_bw = conn.execute(
+            text("SELECT SUM(bytes_transferred) FROM bandwidth_usage WHERE user_id = :user_id"),
+            {"user_id": current_user.id}
+        )
+        bandwidth_bytes = int(result_bw.scalar() or 0)
+
+    from billing_service import BillingService
+    bill = BillingService.calculate_bill(
+        user_id=current_user.id,
+        total_bytes=total_size,
+        api_requests=api_requests_count,
+        bandwidth_bytes=bandwidth_bytes,
+        plan=current_user.plan
+    )
 
     return {
         "total_storage_bytes": total_size,
-        "total_cost": round(total_cost, 2)
+        "total_cost": bill["grand_total"],
+        "api_requests_count": api_requests_count,
+        "bandwidth_bytes": bandwidth_bytes
     }
     
     
@@ -1353,26 +1425,14 @@ def _compute_invoice_data(user_id: int) -> dict:
         )
         bandwidth_bytes = int(result_bw.scalar() or 0)
 
-    # Costs math
-    storage_used_mb = round(total_bytes / (1024 * 1024), 2)
-    plan_rates = {
-        "Free": 0.0,
-        "Pro": 2.0,
-        "Enterprise": 1.5
-    }
-    rate_per_mb = plan_rates.get(plan, 2.0)
-    storage_cost = round(storage_used_mb * rate_per_mb, 2)
-
-    api_request_cost = round(api_requests_count * 0.02, 2)
-
-    from bandwidth_service import get_bandwidth_price_per_gb
-    price_per_gb = get_bandwidth_price_per_gb()
-    bandwidth_gb = bandwidth_bytes / (1024 * 1024 * 1024)
-    bandwidth_cost = round(bandwidth_gb * price_per_gb, 2)
-
-    subtotal = round(storage_cost + api_request_cost + bandwidth_cost, 2)
-    taxes = round(subtotal * 0.18, 2) # 18% GST/Taxes
-    total_amount = round(subtotal + taxes, 2)
+    from billing_service import BillingService
+    bill = BillingService.calculate_bill(
+        user_id=user_id,
+        total_bytes=total_bytes,
+        api_requests=api_requests_count,
+        bandwidth_bytes=bandwidth_bytes,
+        plan=plan
+    )
 
     from datetime import datetime
     now = datetime.now()
@@ -1380,23 +1440,31 @@ def _compute_invoice_data(user_id: int) -> dict:
     generated_at = now.strftime("%Y-%m-%d")
     invoice_id = f"INV-{now.strftime('%Y')}-{total_files:04d}"
 
+    customer_name = user.name if user else "Unknown Customer"
+    customer_email = user.email if user else "unknown@wecloud.com"
+
     return {
         "invoice_id": invoice_id,
         "billing_period": billing_period,
         "plan": plan,
+        "customer_name": customer_name,
+        "customer_email": customer_email,
         "total_files": total_files,
-        "storage_used_mb": storage_used_mb,
-        "rate_per_mb": rate_per_mb,
-        "storage_cost": storage_cost,
+        "total_bytes": total_bytes,
+        "storage_used_mb": round(total_bytes / (1024 * 1024), 2),
+        "rate_per_mb": bill["pricing_config"]["storage_price_per_mb"],
+        "storage_cost": bill["storage_cost"],
         "api_requests_count": api_requests_count,
-        "api_request_cost": api_request_cost,
+        "api_request_cost": bill["api_cost"],
         "bandwidth_bytes": bandwidth_bytes,
-        "bandwidth_cost": bandwidth_cost,
-        "bandwidth_price_per_gb": price_per_gb,
-        "subtotal": subtotal,
-        "taxes": taxes,
-        "total_amount": total_amount,
-        "generated_at": generated_at
+        "bandwidth_cost": bill["bandwidth_cost"],
+        "bandwidth_price_per_gb": bill["pricing_config"]["bandwidth_price_per_gb"],
+        "subtotal": bill["subtotal"],
+        "taxes": bill["taxes"],
+        "total_amount": bill["grand_total"],
+        "generated_at": generated_at,
+        "billing_insights": bill["insights"],
+        "pricing_config": bill["pricing_config"]
     }
 
 
@@ -1492,63 +1560,135 @@ def generate_pdf_invoice(invoice_data: dict) -> io.BytesIO:
         textColor=colors.HexColor('#4f46e5')
     )
 
+    card_style = ParagraphStyle(
+        'CardCell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#1e293b'),
+        spaceAfter=4
+    )
+
     elements = []
     
     # Title & Header Banner
-    elements.append(Paragraph("SaaS Storage Billing Invoice", title_style))
-    elements.append(Paragraph(f"Invoice Statement for your cloud storage consumption.", subtitle_style))
+    elements.append(Paragraph("WeCloud Usage Billing Invoice", title_style))
+    elements.append(Paragraph("Detailed statement of your usage-based cloud resources.", subtitle_style))
     
-    # General Info Table
+    # Customer Information
     info_data = [
-        [Paragraph("Invoice ID:", label_style), Paragraph(invoice_data["invoice_id"], value_style),
+        [Paragraph("Customer Name:", label_style), Paragraph(invoice_data.get("customer_name", "N/A"), value_style),
+         Paragraph("Invoice ID:", label_style), Paragraph(invoice_data["invoice_id"], value_style)],
+        [Paragraph("Customer Email:", label_style), Paragraph(invoice_data.get("customer_email", "N/A"), value_style),
          Paragraph("Billing Period:", label_style), Paragraph(invoice_data["billing_period"], value_style)],
-        [Paragraph("Generated Date:", label_style), Paragraph(invoice_data["generated_at"], value_style),
-         Paragraph("Customer Plan:", label_style), Paragraph(invoice_data["plan"], value_style)]
+        [Paragraph("Billing Model:", label_style), Paragraph("Usage-Based (Pay As You Go)", value_style),
+         Paragraph("Generated Date:", label_style), Paragraph(invoice_data["generated_at"], value_style)],
+        [Paragraph("Current Plan:", label_style), Paragraph(invoice_data["plan"], value_style),
+         Paragraph("", label_style), Paragraph("", value_style)]
     ]
     
     t_info = Table(info_data, colWidths=[110, 150, 110, 150])
     t_info.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'LEFT'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
     ]))
     elements.append(t_info)
     elements.append(Spacer(1, 20))
     
-    # Line Items Section
-    elements.append(Paragraph("Usage Summary Details", section_heading))
+    # Usage Summary Section
+    elements.append(Paragraph("Usage Summary", section_heading))
     
-    # Details Grid Table
-    details_data = [
-        [Paragraph("Usage Metric", label_style), Paragraph("Quantity / Details", label_style), Paragraph("Unit Cost / Rate", label_style)],
-        [Paragraph("Storage Consumed", value_style), Paragraph(f"{invoice_data['storage_used_mb']} MB", value_style), Paragraph(f"₹{invoice_data['rate_per_mb']} / MB", value_style)],
-        [Paragraph("Total Metered Files", value_style), Paragraph(f"{invoice_data['total_files']} files", value_style), Paragraph("Included in plan", value_style)]
+    def format_size_pdf(bytes_val: int) -> str:
+        mb = bytes_val / (1024 * 1024)
+        if mb >= 1024:
+            gb = mb / 1024
+            return f"{gb:.2f} GB"
+        return f"{mb:.2f} MB"
+        
+    storage_str = format_size_pdf(invoice_data.get("total_bytes", 0))
+    bandwidth_str = format_size_pdf(invoice_data.get("bandwidth_bytes", 0))
+    api_requests = invoice_data.get("api_requests_count", 0)
+    total_files = invoice_data.get("total_files", 0)
+    
+    usage_data = [
+        [
+            Paragraph("<b>Storage Used</b><br/><font color='#4f46e5' size='12'><b>" + storage_str + "</b></font>", card_style),
+            Paragraph("<b>API Requests</b><br/><font color='#4f46e5' size='12'><b>" + f"{api_requests:,}" + "</b></font>", card_style)
+        ],
+        [
+            Paragraph("<b>Bandwidth Used</b><br/><font color='#4f46e5' size='12'><b>" + bandwidth_str + "</b></font>", card_style),
+            Paragraph("<b>Total Files Stored</b><br/><font color='#4f46e5' size='12'><b>" + f"{total_files:,}" + "</b></font>", card_style)
+        ]
     ]
+    t_usage = Table(usage_data, colWidths=[260, 260])
+    t_usage.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#e2e8f0')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING', (0,0), (-1,-1), 12),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ('LEFTPADDING', (0,0), (-1,-1), 16),
+        ('RIGHTPADDING', (0,0), (-1,-1), 16),
+    ]))
+    elements.append(t_usage)
+    elements.append(Spacer(1, 20))
     
-    t_details = Table(details_data, colWidths=[200, 160, 160])
-    t_details.setStyle(TableStyle([
+    # Billing Breakdown Section
+    elements.append(Paragraph("Billing Breakdown", section_heading))
+    
+    pricing = invoice_data.get("pricing_config", {})
+    storage_rate = pricing.get("storage_price_per_mb", 0.05)
+    api_rate = pricing.get("api_price_per_request", 0.001)
+    bandwidth_rate = pricing.get("bandwidth_price_per_gb", 10.0)
+    
+    storage_mb = invoice_data.get("total_bytes", 0) / (1024 * 1024)
+    bandwidth_gb = invoice_data.get("bandwidth_bytes", 0) / (1024 * 1024 * 1024)
+    
+    breakdown_data = [
+        [Paragraph("Charge Item", label_style), Paragraph("Usage Quantity × Configured Rate", label_style), Paragraph("Amount Due", label_style)],
+        [
+            Paragraph("Storage Charges", value_style),
+            Paragraph(f"{storage_mb:,.2f} MB × ₹{storage_rate:.3f} / MB", value_style),
+            Paragraph(f"₹{invoice_data.get('storage_cost', 0.0):,.2f}", value_style)
+        ],
+        [
+            Paragraph("API Request Charges", value_style),
+            Paragraph(f"{api_requests:,} Requests × ₹{api_rate:.4f} / Request", value_style),
+            Paragraph(f"₹{invoice_data.get('api_request_cost', 0.0):,.2f}", value_style)
+        ],
+        [
+            Paragraph("Bandwidth Charges", value_style),
+            Paragraph(f"{bandwidth_gb:,.4f} GB × ₹{bandwidth_rate:,.2f} / GB", value_style),
+            Paragraph(f"₹{invoice_data.get('bandwidth_cost', 0.0):,.2f}", value_style)
+        ]
+    ]
+    t_breakdown = Table(breakdown_data, colWidths=[180, 200, 140])
+    t_breakdown.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'LEFT'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f8fafc')),
         ('BOTTOMPADDING', (0,0), (-1,-1), 10),
         ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
         ('LINEBELOW', (0,0), (-1,0), 1.5, colors.HexColor('#e2e8f0')),
         ('LINEBELOW', (0,1), (-1,-1), 0.5, colors.HexColor('#f1f5f9')),
     ]))
-    elements.append(t_details)
-    elements.append(Spacer(1, 25))
+    elements.append(t_breakdown)
+    elements.append(Spacer(1, 15))
     
-    # Total Due Box (Amount Due Banner)
-    elements.append(Paragraph("Payment Summary", section_heading))
-    total_data = [
-        [Paragraph("Total Subtotal:", label_style), Paragraph(f"₹{invoice_data['total_amount']}", value_style)],
-        [Paragraph("Tax / GST (0%):", label_style), Paragraph("₹0.00", value_style)],
-        [Paragraph("Amount Due:", total_label_style), Paragraph(f"₹{invoice_data['total_amount']}", total_val_style)]
+    # Totals Section
+    totals_data = [
+        [Paragraph("Subtotal:", label_style), Paragraph(f"₹{invoice_data.get('subtotal', 0.0):,.2f}", value_style)],
+        [Paragraph("GST (0%):", label_style), Paragraph("₹0.00", value_style)],
+        [Paragraph("Grand Total:", total_label_style), Paragraph(f"₹{invoice_data.get('total_amount', 0.0):,.2f}", total_val_style)]
     ]
-    
-    t_total = Table(total_data, colWidths=[150, 150])
-    t_total.setStyle(TableStyle([
+    t_totals = Table(totals_data, colWidths=[120, 120])
+    t_totals.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'LEFT'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('BOTTOMPADDING', (0,0), (-1,-1), 8),
@@ -1558,29 +1698,73 @@ def generate_pdf_invoice(invoice_data: dict) -> io.BytesIO:
         ('BOX', (0,2), (1,2), 1, colors.HexColor('#bae6fd')),
         ('TOPPADDING', (0,2), (1,2), 12),
         ('BOTTOMPADDING', (0,2), (1,2), 12),
+        ('LEFTPADDING', (0,2), (1,2), 8),
     ]))
     
-    # Position total block on the right-ish side by padding left
-    t_total_container = Table([[Spacer(1,1), t_total]], colWidths=[220, 300])
-    t_total_container.setStyle(TableStyle([
+    t_totals_container = Table([[Spacer(1,1), t_totals]], colWidths=[280, 240])
+    t_totals_container.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('ALIGN', (1,0), (1,0), 'RIGHT')
     ]))
+    elements.append(t_totals_container)
+    elements.append(Spacer(1, 20))
     
-    elements.append(t_total_container)
-    elements.append(Spacer(1, 40))
+    # Billing Insights Section
+    elements.append(Paragraph("Billing Insights", section_heading))
+    insights_list = invoice_data.get("billing_insights", [])
+    if insights_list:
+        for insight in insights_list:
+            elements.append(Paragraph(f"• {insight}", value_style))
+            elements.append(Spacer(1, 4))
+    else:
+        elements.append(Paragraph("No billing insights available for this period.", value_style))
+    elements.append(Spacer(1, 20))
+    
+    # Pricing Configuration Section
+    elements.append(Paragraph("Pricing Configuration Reference", section_heading))
+    pricing_ref_data = [
+        [Paragraph("Storage Rate", label_style), Paragraph("API Request Rate", label_style), Paragraph("Bandwidth Rate", label_style)],
+        [
+            Paragraph(f"₹{storage_rate:.2f} / MB", value_style),
+            Paragraph(f"₹{api_rate:.4f} / Request", value_style),
+            Paragraph(f"₹{bandwidth_rate:.2f} / GB", value_style)
+        ]
+    ]
+    t_pricing_ref = Table(pricing_ref_data, colWidths=[173, 173, 174])
+    t_pricing_ref.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#e2e8f0')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    elements.append(t_pricing_ref)
+    elements.append(Spacer(1, 30))
     
     # Footer Notice
-    footer_text = ParagraphStyle(
-        'FooterNotice',
+    footer_text1 = ParagraphStyle(
+        'FooterText1',
         parent=styles['Normal'],
         fontName='Helvetica-Oblique',
+        fontSize=8,
+        leading=12,
+        textColor=colors.HexColor('#64748b'),
+        alignment=1 # Centered
+    )
+    footer_text2 = ParagraphStyle(
+        'FooterText2',
+        parent=styles['Normal'],
+        fontName='Helvetica',
         fontSize=8,
         leading=12,
         textColor=colors.HexColor('#94a3b8'),
         alignment=1 # Centered
     )
-    elements.append(Paragraph("Thank you for using our Object Storage SaaS service. If you have any questions, please contact billing-support@saasbox.com.", footer_text))
+    elements.append(Paragraph("Thank you for choosing WeCloud.", footer_text1))
+    elements.append(Paragraph("This invoice was generated automatically by the WeCloud Usage Metering & Billing Engine.", footer_text2))
     
     doc.build(elements)
     buffer.seek(0)
@@ -2476,7 +2660,8 @@ def get_admin_dashboard_cards(
     enterprise_users = db.query(User).filter(User.plan == "Enterprise").count()
     
     verified_users = db.query(User).filter(User.email_verified == True).count()
-    pending_verification = db.query(User).filter(User.email_verified == False).count()
+    from models import PendingRegistration
+    pending_verification = db.query(PendingRegistration).count()
     
     today = datetime.utcnow().date()
     today_start = datetime.combine(today, datetime.min.time())

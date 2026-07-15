@@ -18,7 +18,7 @@ class StorageProvider(ABC):
         pass
 
     @abstractmethod
-    def download_file(self, storage_filename: str) -> BinaryIO:
+    def download_file(self, storage_filename: str, chunk_size: int | None = None) -> BinaryIO:
         """Retrieve a file as a binary stream from the storage backend."""
         pass
 
@@ -59,7 +59,7 @@ class LocalStorageProvider(StorageProvider):
         with open(dest_path, "wb") as dest:
             shutil.copyfileobj(file_obj, dest)
 
-    def download_file(self, storage_filename: str) -> BinaryIO:
+    def download_file(self, storage_filename: str, chunk_size: int | None = None) -> BinaryIO:
         src_path = os.path.join(self.upload_folder, storage_filename)
         if not os.path.exists(src_path):
             raise FileNotFoundError(f"File {storage_filename} not found locally.")
@@ -135,12 +135,13 @@ class GoogleCloudStorageProvider(StorageProvider):
             pass
         blob.upload_from_file(file_obj)
 
-    def download_file(self, storage_filename: str) -> BinaryIO:
+    def download_file(self, storage_filename: str, chunk_size: int | None = None) -> BinaryIO:
         if not self.is_active:
             raise RuntimeError("GCS Storage Provider is disabled (bucket is missing or inaccessible).")
         blob = self.bucket.blob(storage_filename)
-        # Using blob.open("rb") streams GCS content without fully caching to disk
-        return blob.open("rb")
+        # BlobReader fetches only the requested chunks; it never materializes the
+        # whole object in memory or creates a temporary file.
+        return blob.open("rb", chunk_size=chunk_size)
 
     def delete_file(self, storage_filename: str) -> None:
         if not self.is_active:
